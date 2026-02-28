@@ -3,22 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEU 獲利守護者 - 專業版</title>
+    <title>LEU 獲利守護者 - 最終版</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 15px; margin: 0; }
         .card { background: #1e293b; border-radius: 24px; padding: 25px; max-width: 600px; margin: 20px auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid #334155; }
         .input-group { display: flex; gap: 12px; margin-bottom: 25px; flex-direction: column; }
-        input { background: #334155; border: 2px solid #475569; border-radius: 14px; padding: 16px; color: white; font-size: 18px; outline: none; transition: 0.3s; }
-        input:focus { border-color: #3b82f6; }
-        button { background: #3b82f6; color: white; border: none; border-radius: 14px; padding: 16px; font-weight: bold; cursor: pointer; font-size: 18px; transition: 0.2s; }
+        input { background: #334155; border: 2px solid #475569; border-radius: 14px; padding: 16px; color: white; font-size: 18px; outline: none; }
+        button { background: #3b82f6; color: white; border: none; border-radius: 14px; padding: 16px; font-weight: bold; cursor: pointer; font-size: 18px; }
         button:active { transform: scale(0.98); background: #2563eb; }
-        
-        .score-box { background: linear-gradient(135deg, #1d4ed8, #3b82f6); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 25px; display: none; box-shadow: 0 8px 20px rgba(59,130,246,0.3); }
+        .score-box { background: linear-gradient(135deg, #1d4ed8, #3b82f6); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 25px; display: none; }
         .score-val { font-size: 56px; font-weight: 900; display: block; line-height: 1; margin: 10px 0; }
-        
         .report { background: #334155; padding: 20px; border-radius: 16px; font-size: 15px; line-height: 1.8; display: none; border-left: 6px solid #3b82f6; margin-bottom: 20px; }
-        #chart { width: 100%; height: 450px; border-radius: 20px; overflow: hidden; margin-top: 10px; }
+        #chart { width: 100%; height: 450px; border-radius: 20px; overflow: hidden; }
         .loading { display: none; text-align: center; color: #3b82f6; font-weight: bold; padding: 20px; }
     </style>
 </head>
@@ -27,21 +24,20 @@
 <div class="card">
     <div style="text-align:center; margin-bottom:20px;">
         <h2 style="margin:0;">🛡️ LEU 勝率診斷儀</h2>
-        <p style="color:#94a3b8; font-size:14px;">專業 API 驅動 · 絕不封鎖</p>
+        <p style="color:#94a3b8; font-size:14px;">專業 API 驅動 · 拒絕封鎖</p>
     </div>
 
     <div class="input-group">
-        <input type="text" id="sym" value="LEU" placeholder="輸入代碼 (如: LEU)">
-        <input type="number" id="kP" value="130" placeholder="設定買回價 (如: 130)">
-        <button id="btn" onclick="runProfessionalDiagnostic()">執行深度量化分析</button>
+        <input type="text" id="sym" value="LEU" placeholder="代碼">
+        <input type="number" id="kP" value="130" placeholder="設定買回價">
+        <button id="btn" onclick="runFinalDiagnostic()">啟動終極診斷</button>
     </div>
 
-    <div id="loader" class="loading">⚙️ 正在從專業數據庫抓取 (秒出)...</div>
+    <div id="loader" class="loading">⚙️ 正在穿透數據庫...</div>
 
     <div id="scoreBox" class="score-box">
         <span style="font-size:16px; font-weight:600; opacity:0.9;">勝率安全評分</span>
         <b id="scoreVal" class="score-val">--</b>
-        <span id="riskTag" style="background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:13px;">分析中</span>
     </div>
 
     <div id="report" class="report"></div>
@@ -49,10 +45,8 @@
 </div>
 
 <script>
-async function runProfessionalDiagnostic() {
-    // 你的專屬 API Key 已鎖定
+async function runFinalDiagnostic() {
     const API_KEY = "8X9qpWswilknQ_ujlBQnOxpYOqiSvaJp"; 
-    
     const sym = document.getElementById('sym').value.toUpperCase().trim();
     const kP = parseFloat(document.getElementById('kP').value);
     const btn = document.getElementById('btn');
@@ -62,57 +56,41 @@ async function runProfessionalDiagnostic() {
     loader.style.display = 'block';
 
     try {
-        // 使用 Polygon API 抓取過去一年的日 K 數據
-        const res = await fetch(`https://api.polygon.io/v2/aggs/ticker/${sym}/range/1/day/2025-02-28/2026-02-28?adjusted=true&sort=asc&apiKey=${API_KEY}`);
+        const res = await fetch(`https://api.polygon.io/v2/aggs/ticker/${sym}/range/1/day/2025-01-01/2026-12-31?adjusted=true&sort=asc&apiKey=${API_KEY}`);
         const data = await res.json();
-        
-        if(!data.results) throw new Error("無效數據");
-        
         const results = data.results;
+        
         const close = results.map(r => r.c);
         const curP = close[close.length - 1];
-        
-        // 計算 200 日年線與乖離率
-        const ma200 = close.slice(-200).reduce((a, b) => a + b) / close.slice(-200).length;
+        const ma200 = close.slice(-200).reduce((a, b) => a + b) / 200;
         const bias = ((curP - ma200) / ma200 * 100).toFixed(2);
-        
-        // 計算費波那契 0.618
         const hi = Math.max(...results.map(r => r.h));
         const lo = Math.min(...results.map(r => r.l));
         const fib618 = hi - 0.618 * (hi - lo);
-        
-        // 計算動態停利線 (20日高點回落 15%)
-        const last20Hi = Math.max(...results.slice(-20).map(r => r.h));
-        const stopL = (last20Hi * 0.85).toFixed(2);
+        const stopL = (Math.max(...close.slice(-20)) * 0.85).toFixed(2);
 
-        // --- 勝率評分邏輯 ---
-        let score = 80;
-        if(parseFloat(bias) > 30) score -= 30; // 過熱扣分
-        if(parseFloat(bias) < -15) score -= 10; // 趨勢轉弱
-        if(curP < parseFloat(stopL)) score -= 10; // 破位扣分
-        if(kP <= fib618) score += 15; // 買在 0.618 支撐下加分
+        // 完整評分邏輯
+        let s = 80;
+        if(parseFloat(bias) > 30) s -= 30;
+        if(parseFloat(bias) < -15) s -= 10;
+        if(curP < parseFloat(stopL)) s -= 10;
+        if(kP <= fib618) s += 15; 
 
-        // 更新 UI
-        document.getElementById('scoreVal').innerText = (score > 100 ? 100 : score) + " / 100";
-        document.getElementById('riskTag').innerText = score >= 70 ? "🚀 高勝率區域" : (score >= 50 ? "⚖️ 震盪觀察期" : "⚠️ 風險極大");
+        document.getElementById('scoreVal').innerText = (s > 100 ? 100 : s) + " / 100";
         document.getElementById('scoreBox').style.display = 'block';
         
         let reportHtml = `<b>📊 ${sym} 深度診斷報告：</b><br>`;
-        reportHtml += `• 現價：$${curP.toFixed(2)} | 年線乖離：${bias}%<br>`;
-        reportHtml += `• 費波那契 0.618 支撐：<b>$${fib618.toFixed(2)}</b><br>`;
-        reportHtml += `• 動態停利線：$${stopL}<br>`;
-        
-        if(kP) {
-            const gap = ((kP - fib618) / fib618 * 100).toFixed(1);
-            reportHtml += `<hr><b>🎯 買回計畫測試 ($${kP})：</b><br>`;
-            reportHtml += `位階：${kP <= fib618 ? '<span style="color:#4ade80">🔥 符合優質支撐</span>' : '<span style="color:#fbbf24">⏳ 仍屬追高</span>'}<br>`;
-            reportHtml += `建議：距離 0.618 還有 ${gap}% 空間。若跌到 $130，你的安全邊際極高，反彈獲利空間巨大。`;
-        }
+        reportHtml += `• 目前現價：$${curP.toFixed(2)}<br>`;
+        reportHtml += `• 年線乖離率：${bias}%<br>`;
+        reportHtml += `• 0.618 支撐位：<b>$${fib618.toFixed(2)}</b><br>`;
+        reportHtml += `• <b>動態停利線：$${stopL}</b><br>`;
+        reportHtml += `<hr><b>🎯 $${kP} 計畫測試：</b><br>`;
+        reportHtml += `位階：${kP <= fib618 ? '<span style="color:#4ade80">🔥 符合優質超跌區</span>' : '<span style="color:#fbbf24">⏳ 仍屬追高</span>'}<br>`;
+        reportHtml += `狀態：${curP < parseFloat(stopL) ? '⚠️ 趨勢已跌破停利線' : '✅ 趨勢尚穩'}。`;
         
         document.getElementById('report').innerHTML = reportHtml;
         document.getElementById('report').style.display = 'block';
 
-        // 模擬 180 天波動度路徑 (蒙地卡羅)
         let paths = [];
         for(let i=0; i<35; i++){
             let p = [curP];
@@ -121,12 +99,11 @@ async function runProfessionalDiagnostic() {
         }
         Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.8, color:'rgba(59,130,246,0.15)'}, showlegend:false})), {
             paper_bgcolor:'#1e293b', plot_bgcolor:'#1e293b', font:{color:'#fff'},
-            title: `${sym} 180天機率期望路徑`,
-            margin: {t:40, b:40, l:45, r:15}
+            title: `${sym} 180天機率期望路徑`
         });
 
     } catch (e) {
-        alert("診斷失敗！請檢查代碼或網路連線。");
+        alert("診斷失敗！請檢查網路。");
     } finally {
         loader.style.display = 'none';
         btn.disabled = false;
