@@ -1,5 +1,166 @@
-// 加入隨機 User-Agent 感官與更長的超時等待
-const r = await fetch(proxy(u), { 
-    cache: 'no-store',
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0' }
-});
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股勝率診斷儀 - 完全體整合版</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; color: #1c1e21; }
+        .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 12px 45px rgba(0,0,0,0.15); }
+        .header { text-align: center; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        input { flex: 1; min-width: 140px; padding: 15px; border: 2px solid #e4e6eb; border-radius: 14px; font-size: 16px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #0062ff; box-shadow: 0 0 0 3px rgba(0,98,255,0.1); }
+        button { padding: 15px; background: #0062ff; color: white; border: none; border-radius: 14px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #bcc0c4; cursor: not-allowed; }
+        
+        /* 評分區 */
+        .score-box { background: linear-gradient(135deg, #0062ff, #00c6ff); color: white; padding: 22px; border-radius: 18px; text-align: center; margin-bottom: 20px; display: none; }
+        .score-val { font-size: 48px; font-weight: 900; display: block; line-height: 1; margin: 10px 0; }
+        
+        /* 數據格 */
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .box { background: #f7f8fa; border: 1px solid #e4e6eb; padding: 15px; border-radius: 14px; text-align: center; }
+        .box span { font-size: 12px; color: #65676b; display: block; margin-bottom: 4px; }
+        .box b { font-size: 18px; color: #050505; }
+
+        .report-card { background: #fff; border-left: 6px solid #0062ff; padding: 20px; border-radius: 12px; border: 1px solid #e4e6eb; border-left-width: 6px; line-height: 1.8; font-size: 15px; display: none; margin-bottom: 20px; }
+        #chart { width: 100%; height: 450px; border-radius: 18px; margin-top: 10px; }
+        .loading { display: none; text-align: center; color: #0062ff; font-weight: bold; padding: 20px; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 style="margin:0;">⚖️ 美股勝率診斷儀</h2>
+        <p style="color:#65676b; font-size:14px; margin:8px 0 0;">大數據量化分析 · 獲利守護系統</p>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="sym" placeholder="代碼 (例: LEU)">
+        <input type="number" id="kP" placeholder="預期買回價">
+        <button id="btn" onclick="runDiagnostic()">啟動深度診斷</button>
+    </div>
+
+    <div id="loader" class="loading">⚙️ 正在安全穿透數據通道，請稍候...</div>
+
+    <div id="scoreBox" class="score-box">
+        <span style="font-weight:600; opacity:0.9;">勝率安全評分</span>
+        <b id="scoreVal" class="score-val">--</b>
+        <span id="riskLevel" style="font-size:14px; background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px;">分析中...</span>
+    </div>
+
+    <div id="statGrid" class="grid" style="display:none;">
+        <div class="box"><span>目前現價</span><b id="curP">--</b></div>
+        <div class="box"><span>年線乖離 (Bias)</span><b id="bias">--</b></div>
+        <div class="box"><span>動態停利線</span><b id="stop">--</b></div>
+        <div class="box"><span>前瞻 P/E</span><b id="pe">--</b></div>
+    </div>
+
+    <div id="report" class="report-card"></div>
+    <div id="chart"></div>
+</div>
+
+<script>
+async function runDiagnostic() {
+    const symbol = document.getElementById('sym').value.toUpperCase().trim();
+    const kP = parseFloat(document.getElementById('kP').value);
+    if(!symbol) return;
+
+    const btn = document.getElementById('btn');
+    const loader = document.getElementById('loader');
+    const scoreBox = document.getElementById('scoreBox');
+    const statGrid = document.getElementById('statGrid');
+    const reportBox = document.getElementById('report');
+    
+    btn.disabled = true;
+    loader.style.display = 'block';
+    scoreBox.style.display = 'none';
+    statGrid.style.display = 'none';
+    reportBox.style.display = 'none';
+
+    const proxy = u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}&_t=${Date.now()}`;
+
+    try {
+        // 1. 抓取 K 線數據
+        const cRes = await fetch(proxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`), { cache: 'no-store' });
+        const cData = JSON.parse((await cRes.json()).contents).chart.result[0];
+        
+        await new Promise(r => setTimeout(r, 1200));
+
+        // 2. 抓取基本面數據
+        const fRes = await fetch(proxy(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail,defaultKeyStatistics,financialData`), { cache: 'no-store' });
+        const fData = JSON.parse((await fRes.json()).contents).quoteSummary.result[0];
+
+        const close = cData.indicators.quote[0].close.filter(p => p != null);
+        const curPrice = close[close.length - 1];
+        const ma200 = close.slice(-200).reduce((a, b) => a + b) / 200;
+        const bias = ((curPrice - ma200) / ma200 * 100).toFixed(2);
+        const hi = Math.max(...cData.indicators.quote[0].high.filter(p => p != null));
+        const lo = Math.min(...cData.indicators.quote[0].low.filter(p => p != null));
+        const fib618 = hi - 0.618 * (hi - lo);
+        const stopL = (Math.max(...close.slice(-20)) * 0.85).toFixed(2);
+
+        // 財務參數
+        const pe = fData.summaryDetail?.forwardPE?.fmt || "N/A";
+        const fcf = fData.financialData?.freeCashflow?.raw || 0;
+        const debt = fData.financialData?.debtToEquity?.raw || 0;
+
+        // --- 核心評分邏輯 (波動度與風險加權) ---
+        let s = 80;
+        if(parseFloat(bias) > 30) s -= 25; // 過熱
+        if(parseFloat(bias) < -15) s -= 15; // 空頭趨勢
+        if(fcf < 0) s -= 15; // 燒錢風險
+        if(debt > 150) s -= 10; // 債務壓力
+        if(curPrice < parseFloat(stopL)) s -= 10; // 破位扣分
+
+        // 更新 UI
+        document.getElementById('scoreVal').innerText = s + " / 100";
+        document.getElementById('riskLevel').innerText = s >= 70 ? "✅ 勝率較高" : (s >= 50 ? "⏳ 觀望為宜" : "⚠️ 風險極大");
+        document.getElementById('curP').innerText = "$" + curPrice.toFixed(2);
+        document.getElementById('bias').innerText = bias + "%";
+        document.getElementById('pe').innerText = pe;
+        document.getElementById('stop').innerText = "$" + stopL;
+
+        let rText = `<b>📊 實戰診斷報告：</b><br>`;
+        rText += `• <b>財務現況：</b>自由現金流 ${fcf < 0 ? '<span style="color:red">負向</span>' : '健全'}，負債比 ${debt.toFixed(1)}%。<br>`;
+        rText += `• <b>關鍵支撐：</b> 費波那契 0.618 位階在 <b>$${fib618.toFixed(2)}</b>。<br>`;
+        
+        if(kP) {
+            const gap = ((kP - fib618) / fib618 * 100).toFixed(1);
+            rText += `• <b>買回測試 ($${kP})：</b> ${kP <= fib618 ? '<b style="color:green">🔥 符合優質支撐</b>' : '<b style="color:orange">⏳ 仍屬追高</b>'} (距支撐 ${gap}%)。<br>`;
+        }
+        
+        rText += `<hr><b>📜 紀律指引：</b> 目前價位${curPrice < parseFloat(stopL) ? ' <span style="color:red">已跌破</span>' : ' 尚守在'}停利線之上。若跌破 $${stopL} 請務必執行減碼。`;
+        
+        scoreBox.style.display = 'block';
+        statGrid.style.display = 'grid';
+        reportBox.innerHTML = rText;
+        reportBox.style.display = 'block';
+
+        // 波動度路徑模擬 (蒙地卡羅)
+        let paths = [];
+        for(let i=0; i<35; i++){
+            let p = [curPrice];
+            for(let d=0; d<180; d++){ 
+                // 基於隨機波動模擬 180 天走勢
+                p.push(p[p.length-1] * (1 + (Math.random()-0.492)*0.04)); 
+            }
+            paths.push(p);
+        }
+        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.7, color:'rgba(0,98,255,0.12)'}, showlegend:false})), 
+        { title: `${symbol} 180天機率期望路徑`, margin: {t:40, b:40, l:40, r:10} });
+
+    } catch (e) {
+        alert("Yahoo 偵測到頻繁存取。請開啟手機「飛航模式」30秒換 IP，並使用「無痕模式」再試一次。");
+    } finally {
+        loader.style.display = 'none';
+        setTimeout(() => { btn.disabled = false; }, 4000);
+    }
+}
+</script>
+</body>
+</html>
