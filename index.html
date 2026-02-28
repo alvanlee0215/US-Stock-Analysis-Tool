@@ -3,128 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股終極勝率診斷儀 - 終極修復版</title>
+    <title>美股勝率診斷儀 - 終極抗封鎖版</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 25px; }
-        .input-group { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        input { flex: 1; min-width: 150px; padding: 14px; border: 2px solid #e4e6eb; border-radius: 10px; font-size: 16px; outline: none; }
-        button { padding: 14px 24px; background: #0062ff; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #ccc; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; display:none; }
-        .box { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: center; }
-        .box span { font-size: 11px; color: #65676b; display: block; margin-bottom: 4px; }
-        .box b { font-size: 18px; }
-        .report { background: #f8f9fa; border-left: 6px solid #0062ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; display:none; line-height: 1.6; }
-        #chart { width: 100%; height: 500px; border-radius: 12px; }
-        .loading { display: none; text-align: center; padding: 20px; color: #0062ff; font-weight: bold; }
+        body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 20px; margin: 0; }
+        .card { background: white; border-radius: 16px; padding: 25px; max-width: 600px; margin: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        input { flex: 1; padding: 15px; border: 2px solid #eee; border-radius: 12px; font-size: 16px; outline: none; }
+        button { padding: 15px; background: #0062ff; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { text-align: center; color: #0062ff; font-weight: bold; display: none; margin: 15px 0; }
+        .result-box { background: #f8f9fa; border-left: 6px solid #0062ff; padding: 20px; border-radius: 10px; margin-top: 20px; display: none; line-height: 1.8; }
+        #chart { width: 100%; height: 400px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h2>⚖️ 美股勝率診斷儀 (終極修復版)</h2>
-        <p style="color:#666; font-size:12px;">解決連續失敗問題 | 請勿連續點擊</p>
-    </div>
-
+<div class="card">
+    <h2 style="text-align:center;">⚖️ 美股勝率診斷儀</h2>
     <div class="input-group">
-        <input type="text" id="sym" placeholder="代碼 (如: LEU, MU)">
-        <input type="number" id="kP" placeholder="K線申購價">
-        <button id="btn" onclick="startAnalysis()">執行深度診斷</button>
+        <input type="text" id="symbol" placeholder="代碼 (如: PLTR, NVDA)">
+        <button id="btn" onclick="runSafeAnalysis()">啟動深度診斷</button>
     </div>
 
-    <div id="loader" class="loading">正在請求數據，請耐心等候 5-10 秒...</div>
-    <div id="report" class="report"></div>
-
-    <div id="statGrid" class="grid">
-        <div class="box"><span>安全評分</span><b id="score">--</b></div>
-        <div class="box"><span>年線乖離 Bias</span><b id="bias">--%</b></div>
-        <div class="box"><span>動態停利線</span><b id="stop">--</b></div>
-    </div>
-
+    <div id="loader" class="status">⚙️ 正在穿透加密通道抓取數據...</div>
+    <div id="result" class="result-box"></div>
     <div id="chart"></div>
 </div>
 
 <script>
-async function startAnalysis() {
-    const symbol = document.getElementById('sym').value.toUpperCase().trim();
-    if(!symbol) return;
+async function runSafeAnalysis() {
+    const sym = document.getElementById('symbol').value.toUpperCase().trim();
+    if(!sym) return;
 
     const btn = document.getElementById('btn');
     const loader = document.getElementById('loader');
-    const reportBox = document.getElementById('report');
-    const statGrid = document.getElementById('statGrid');
+    const resBox = document.getElementById('result');
 
+    // 啟動冷卻機制，防止連點
     btn.disabled = true;
     loader.style.display = 'block';
-    reportBox.style.display = 'none';
-    statGrid.style.display = 'none';
+    resBox.style.display = 'none';
 
-    // 隨機更換代理順序
+    // 雙代理 + 隨機標籤 (防封鎖核心)
     const proxies = [
-        u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}&t=${Date.now()}`,
-        u => `https://corsproxy.io/?${encodeURIComponent(u)}&cache=${Date.now()}`
-    ].sort(() => Math.random() - 0.5);
+        u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}&_t=${Date.now()}`,
+        u => `https://corsproxy.io/?${encodeURIComponent(u + '&_cb=' + Date.now())}`
+    ];
 
-    async function fetchWithProxy(url) {
+    async function smartFetch(url) {
         for (let p of proxies) {
             try {
-                const res = await fetch(p(url));
-                if (!res.ok) continue;
-                const data = await res.json();
-                return p.toString().includes('allorigins') ? JSON.parse(data.contents) : data;
-            } catch (e) { console.warn("嘗試下一個代理..."); }
+                const r = await fetch(p(url));
+                const j = await r.json();
+                return p.toString().includes('allorigins') ? JSON.parse(j.contents) : j;
+            } catch (e) { console.log("切換代理..."); }
         }
-        throw new Error("API 暫時被鎖定");
+        throw new Error("封鎖中");
     }
 
     try {
-        const cData = await fetchWithProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`);
-        await new Promise(r => setTimeout(r, 2000)); // 強制冷卻 2 秒
-        const fData = await fetchWithProxy(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail,defaultKeyStatistics,financialData`);
+        // 抓取 K 線
+        const c = await smartFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=2y&interval=1d`);
+        await new Promise(r => setTimeout(r, 1500)); // 強制休息
+        // 抓取基本面
+        const f = await smartFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=summaryDetail,financialData`);
 
-        const chart = cData.chart.result[0];
-        const fund = fData.quoteSummary.result[0];
-        const close = chart.indicators.quote[0].close.filter(p => p != null);
-        const curP = close[close.length - 1];
-        
-        // 核心計算
-        const ma200 = close.slice(-200).reduce((a, b) => a + b) / 200;
-        const bias = ((curP - ma200) / ma200 * 100).toFixed(2);
-        const stopL = (Math.max(...close.slice(-20)) * 0.85).toFixed(2);
-        
-        // 基本面
-        const pe = fund.summaryDetail?.forwardPE?.fmt || "N/A";
-        const fcf = fund.financialData?.freeCashflow?.raw || 0;
+        const quotes = c.chart.result[0].indicators.quote[0].close.filter(v => v != null);
+        const curP = quotes[quotes.length - 1];
+        const ma200 = quotes.slice(-200).reduce((a,b)=>a+b)/200;
+        const bias = ((curP - ma200)/ma200*100).toFixed(2);
+        const stop = (Math.max(...quotes.slice(-20)) * 0.85).toFixed(2);
 
-        document.getElementById('score').innerText = (bias > 40 ? 60 : 85) + "/100";
-        document.getElementById('bias').innerText = bias + "%";
-        document.getElementById('stop').innerText = stopL;
-        statGrid.style.display = 'grid';
+        resBox.innerHTML = `
+            <b>📊 ${sym} 診斷結果：</b><br>
+            • 現價：$${curP.toFixed(2)}<br>
+            • 年線乖離 (Bias)：${bias}%<br>
+            • <b>動態停利線：$${stop}</b><br>
+            • 建議：${bias > 30 ? '⚠ 過熱請減碼' : '✅ 位階尚可'}<br>
+            <small>💡 跌破 $${stop} 請務必執行停損紀律。</small>
+        `;
+        resBox.style.display = 'block';
 
-        reportBox.innerHTML = `<b>📊 診斷結果：</b><br>現價：${curP.toFixed(2)} | 前瞻PE：${pe}<br>動態停利：<b>${stopL}</b> (高點回落15%)<br>💡 乖離率高達 ${bias}%，強烈建議分批減碼。`;
-        reportBox.style.display = 'block';
-
-        // 模擬路徑 (理性版)
-        let rets = []; for(let i=1; i<40; i++) rets.push(Math.log(close[close.length-i]/close[close.length-i-1]));
-        const mu = (rets.reduce((a,b)=>a+b)/40) * 0.15;
-        const sig = Math.sqrt(rets.map(x=>Math.pow(x-(mu/0.15),2)).reduce((a,b)=>a+b)/40);
+        // 簡易路徑模擬
         let paths = [];
-        for(let i=0; i<40; i++){
+        for(let i=0; i<30; i++){
             let p = [curP];
-            for(let d=0; d<180; d++){ p.push(p[p.length-1] * Math.exp((mu - 0.5 * sig**2) + sig * (Math.random()*2-1)*1.1)); }
+            for(let d=0; d<180; d++){ p.push(p[p.length-1] * (1 + (Math.random()-0.48)*0.04)); }
             paths.push(p);
         }
-        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.5, color:'rgba(0,98,255,0.1)'}, showlegend:false})), {title: `${symbol} 180天理性期望路徑`});
+        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.5, color:'rgba(0,98,255,0.1)'}, showlegend:false})), {title: '180天理性期望路徑'});
 
     } catch (e) {
-        alert("Yahoo API 已全面封鎖目前連線。請關閉網頁，等 10 分鐘後換個網路（如手機熱點）再試。");
+        alert("Yahoo 暫時封鎖連線。請開啟手機「飛航模式」10秒後關閉，再重新整理網頁試試。");
     } finally {
         loader.style.display = 'none';
-        setTimeout(() => { btn.disabled = false; }, 5000); // 鎖定按鈕 5 秒防止連點
+        setTimeout(() => { btn.disabled = false; }, 3000); // 3秒後才允許再次點擊
     }
 }
 </script>
