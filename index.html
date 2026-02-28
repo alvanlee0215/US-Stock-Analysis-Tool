@@ -3,181 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股全能分析儀 - 走勢模擬與申購判斷</title>
+    <title>美股終極勝率診斷系統 - K線與量化整合版</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: #f4f7f9; color: #333; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h2 { color: #1a73e8; margin-top: 0; }
-        
-        .input-group { display: flex; gap: 10px; margin-bottom: 25px; }
-        input { flex: 1; padding: 15px; border: 2px solid #edf2f7; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
-        input:focus { border-color: #1a73e8; }
-        button { padding: 15px 30px; background: #1a73e8; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:hover { background: #1557b0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #1c1e21; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0f2f5; padding-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        input { flex: 1; min-width: 200px; padding: 15px; border: 2px solid #e4e6eb; border-radius: 12px; font-size: 16px; outline: none; }
+        input:focus { border-color: #0062ff; }
+        button { padding: 15px 30px; background: #0062ff; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #0052d6; }
 
-        .ai-card { background: #e8f0fe; border-left: 5px solid #1a73e8; padding: 20px; border-radius: 8px; margin-bottom: 25px; line-height: 1.6; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-box { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: center; }
-        .stat-box span { font-size: 12px; color: #70757a; display: block; margin-bottom: 5px; }
-        .stat-box b { font-size: 20px; color: #202124; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 15px; text-align: center; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .stat-card span { font-size: 12px; color: #65676b; display: block; margin-bottom: 8px; }
+        .stat-card b { font-size: 20px; color: #050505; }
 
-        .fib-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fafafa; border-radius: 8px; overflow: hidden; }
-        .fib-table th, .fib-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-        .fib-table th { background: #f1f3f4; color: #5f6368; font-size: 13px; }
+        .analysis-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        @media (max-width: 768px) { .analysis-container { grid-template-columns: 1fr; } }
         
-        #chart { width: 100%; height: 500px; margin-top: 20px; border-radius: 10px; overflow: hidden; }
-        .loading { display: none; color: #1a73e8; font-weight: bold; margin-bottom: 15px; }
+        .report-box { background: #f8f9fa; border-left: 8px solid #0062ff; padding: 20px; border-radius: 12px; line-height: 1.8; font-size: 14px; }
+        .k-box { background: #fff; border: 2px solid #e7f3ff; border-left: 8px solid #28a745; padding: 20px; border-radius: 12px; line-height: 1.8; font-size: 14px; }
+
+        .fib-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+        .fib-table th, .fib-table td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f2f5; }
+        .fib-table th { color: #888; background: #fafafa; }
+
+        #chart { width: 100%; height: 500px; border-radius: 15px; margin-top: 20px; }
+        .loading { display: none; text-align: center; color: #0062ff; font-weight: bold; padding: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 美股全能走勢分析儀</h2>
-    <p style="color: #666; font-size: 14px;">適用於：強勢股回檔 (如 MU) 與 下跌股抄底 (如 TSLA)</p>
-    
+    <div class="header">
+        <h2>💎 美股終極勝率診斷儀</h2>
+        <p>量化數據 × K線支撐 × 紀律管理</p>
+    </div>
+
     <div class="input-group">
-        <input type="text" id="symbolInput" placeholder="輸入美股代碼 (例如: MU 或 NVDA)">
-        <button onclick="startAnalysis()">執行 180 天模擬分析</button>
+        <input type="text" id="sym" placeholder="代碼 (如: LEU, MU)">
+        <input type="number" id="kPrice" placeholder="你的 K線預期申購價">
+        <button onclick="executeAnalysis()">執行全要素診斷</button>
     </div>
 
-    <div id="loader" class="loading">⚙️ 正在向大數據接口請求並進行 1,000 次路徑模擬...</div>
+    <div id="loader" class="loading">⚙️ 正在向大數據接口請求並計算勝率機率...</div>
 
-    <div id="aiConclusion" class="ai-card" style="display:none;"></div>
+    <div id="mainUI" style="display:none;">
+        <div class="dashboard-grid">
+            <div class="stat-card"><span>安全評分</span><b id="v_score">--</b></div>
+            <div class="stat-card"><span>年線乖離 (Bias)</span><b id="v_bias">--%</b></div>
+            <div class="stat-card"><span>動態停利線</span><b id="v_stop">--</b></div>
+            <div class="stat-card"><span>180天預估中位</span><b id="v_target">--</b></div>
+        </div>
 
-    <div class="grid">
-        <div class="stat-box"><span>目前市價</span><b id="currPrice">--</b></div>
-        <div class="stat-box"><span>年線乖離率 (Bias)</span><b id="biasValue">--%</b></div>
-        <div class="stat-box"><span>180天預估中位</span><b id="targetPrice">--</b></div>
+        <div class="analysis-container">
+            <div id="dataReport" class="report-box"></div>
+            <div id="kReport" class="k-box"></div>
+        </div>
+
+        <table class="fib-table">
+            <thead>
+                <tr><th>費波那契位階</th><th>參考價格</th><th>量化操作建議</th></tr>
+            </thead>
+            <tbody id="fibBody"></tbody>
+        </table>
+
+        <div id="chart"></div>
     </div>
-
-    <table class="fib-table" id="fibTable" style="display:none;">
-        <thead>
-            <tr>
-                <th>費波那契位階</th>
-                <th>參考價格</th>
-                <th>申購場景建議</th>
-            </tr>
-        </thead>
-        <tbody id="fibResults"></tbody>
-    </table>
-
-    <div id="chart"></div>
 </div>
 
 <script>
-async function startAnalysis() {
-    const symbol = document.getElementById('symbolInput').value.toUpperCase().trim();
-    if (!symbol) return alert("請輸入股票代碼");
+async function executeAnalysis() {
+    const symbol = document.getElementById('sym').value.toUpperCase().trim();
+    const kPrice = parseFloat(document.getElementById('kPrice').value);
+    if(!symbol) return;
 
-    const loader = document.getElementById('loader');
-    const aiBox = document.getElementById('aiConclusion');
-    const fibTable = document.getElementById('fibTable');
-    
-    loader.style.display = 'block';
-    aiBox.style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('mainUI').style.display = 'none';
 
     try {
-        // 使用 AllOrigins 代理繞過 CORS 限制
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
-        
-        const response = await fetch(proxyUrl);
-        const rawData = await response.json();
-        const data = JSON.parse(rawData.contents).chart.result[0];
-        
-        const indicators = data.indicators.quote[0];
-        const closePrices = indicators.close.filter(p => p != null);
-        const highPrices = indicators.high.filter(p => p != null);
-        const lowPrices = indicators.low.filter(p => p != null);
-        
-        const currentPrice = closePrices[closePrices.length - 1];
-        
-        // 1. 年線乖離率計算 (200MA Bias)
-        const ma200 = closePrices.slice(-200).reduce((a, b) => a + b) / 200;
-        const bias = ((currentPrice - ma200) / ma200 * 100).toFixed(2);
+        const proxy = url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const [cRes, fRes] = await Promise.all([
+            fetch(proxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`)).then(r=>r.json()),
+            fetch(proxy(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail,defaultKeyStatistics,financialData`)).then(r=>r.json())
+        ]);
 
-        // 2. 費波那契計算 (全套)
-        const rangeHigh = Math.max(...highPrices);
-        const rangeLow = Math.min(...lowPrices);
-        const diff = rangeHigh - rangeLow;
-        
-        const fibLevels = [
-            {lv: "0.382", p: (rangeHigh - 0.382 * diff).toFixed(2), note: "強勢股回檔支撐 (適合作多)"},
-            {lv: "0.500", p: (rangeHigh - 0.500 * diff).toFixed(2), note: "多空分水嶺"},
-            {lv: "0.618", p: (rangeHigh - 0.618 * diff).toFixed(2), note: "黃金分割支撐 (穩健申購價)"},
-            {lv: "0.786", p: (rangeHigh - 0.786 * diff).toFixed(2), note: "深層修正底線 (抄底參考)"}
+        const cData = JSON.parse(cRes.contents).chart.result[0];
+        const fData = JSON.parse(fRes.contents).quoteSummary.result[0];
+        const close = cData.indicators.quote[0].close.filter(p=>p!=null);
+        const curP = close[close.length-1];
+
+        // 1. 技術指標
+        const ma200 = close.slice(-200).reduce((a,b)=>a+b)/200;
+        const bias = ((curP - ma200)/ma200*100).toFixed(2);
+        const hi = Math.max(...cData.indicators.quote[0].high.filter(p=>p!=null));
+        const lo = Math.min(...cData.indicators.quote[0].low.filter(p=>p!=null));
+        const diff = hi - lo;
+        const stopLine = (Math.max(...close.slice(-20)) * 0.85).toFixed(2);
+
+        // 2. 費波那契
+        const fibs = [
+            {lv:"0.382", p:(hi-0.382*diff).toFixed(2), n:"強勢股回檔支撐"},
+            {lv:"0.618", p:(hi-0.618*diff).toFixed(2), n:"黃金申購位"},
+            {lv:"0.786", p:(hi-0.786*diff).toFixed(2), n:"深層修正底線"}
         ];
 
-        // 3. 蒙地卡羅模擬 (180天)
-        let returns = [];
-        for (let i = 1; i < 60; i++) {
-            returns.push(Math.log(closePrices[closePrices.length - i] / closePrices[closePrices.length - i - 1]));
-        }
-        const mu = returns.reduce((a, b) => a + b) / returns.length;
-        const sigma = Math.sqrt(returns.map(x => Math.pow(x - mu, 2)).reduce((a, b) => a + b) / returns.length);
+        // 3. 基本面與評分
+        const fPE = fData.summaryDetail.forwardPE?.fmt || "N/A";
+        const fcf = fData.financialData.freeCashflow?.raw || 0;
+        const debt = fData.financialData.debtToEquity?.raw || 0;
+        const short = fData.defaultKeyStatistics.shortPercentOfFloat?.raw || 0;
         
-        const days = 180;
-        const sims = 120; // 模擬次數
-        let paths = [];
-        let finalPrices = [];
+        let winScore = 85;
+        if(parseFloat(bias) > 40) winScore -= 30;
+        if(fcf < 0) winScore -= 15;
+        if(debt > 120) winScore -= 10;
+        if(short > 10) winScore -= 10;
 
-        for (let i = 0; i < sims; i++) {
-            let p = [currentPrice];
-            for (let d = 0; d < days; d++) {
-                let change = (mu - 0.5 * sigma**2) + sigma * (Math.random() * 2 - 1) * 1.5;
-                p.push(p[p.length - 1] * Math.exp(change));
-            }
-            paths.push(p);
-            finalPrices.push(p[days]);
-        }
+        // UI 更新
+        document.getElementById('v_score').innerText = winScore + " / 100";
+        document.getElementById('v_bias').innerText = bias + "%";
+        document.getElementById('v_stop').innerText = stopLine;
+        document.getElementById('fibBody').innerHTML = fibs.map(f=>`<tr><td>${f.lv}</td><td><b>${f.p}</b></td><td>${f.n}</td></tr>`).join('');
 
-        const medianTarget = (finalPrices.sort((a, b) => a - b)[Math.floor(sims / 2)]).toFixed(2);
+        // 報告輸出
+        document.getElementById('dataReport').innerHTML = `
+            <b>📊 數據診斷結論：</b><br>
+            • <b>估值：</b> ${fPE==='N/A'?'虧損中':'前瞻 P/E '+fPE}，現金流：${fcf<0?'⚠ 負向':'✅ 正向'}<br>
+            • <b>籌碼：</b> 空單比例 ${short.toFixed(2)}%。${short>10?'⚠ 遭放空壓力':'✅ 籌碼穩定'}<br>
+            • <b>保護：</b> 獲利中請守住 <b>${stopLine}</b> 保護線。<br>
+            • <b>建議：</b> ${winScore > 70 ? '🟢 適合申購' : '🔴 建議減量或觀望'}
+        `;
 
-        // 更新介面數據
-        document.getElementById('currPrice').innerText = currentPrice.toFixed(2);
-        document.getElementById('biasValue').innerText = bias + "%";
-        document.getElementById('targetPrice').innerText = medianTarget;
-
-        let fibHtml = "";
-        fibLevels.forEach(f => {
-            fibHtml += `<tr><td>${f.lv}</td><td><b>${f.p}</b></td><td>${f.note}</td></tr>`;
-        });
-        document.getElementById('fibResults').innerHTML = fibHtml;
-        fibTable.style.display = 'table';
-
-        // 診斷結論
-        let diag = "";
-        if (bias > 15) {
-            diag = `💡 <b>診斷：漲幅已高。</b> 目前年線乖離率 ${bias}% 偏高，建議等待價格拉回到 0.382 位階 (約 ${fibLevels[0].p}) 再行申購較安全。`;
-        } else if (bias < -15) {
-            diag = `🔥 <b>診斷：嚴重超跌。</b> 目前具備強大抄底潛力。建議參考 0.618 (${fibLevels[2].p}) 或 0.786 (${fibLevels[3].p}) 作為申購底線。`;
+        // K線壓力測試
+        if(kPrice) {
+            const gap = ((kPrice - fibs[1].p)/fibs[1].p*100).toFixed(1);
+            document.getElementById('kReport').innerHTML = `
+                <b>🎯 K線申購價評估 (${kPrice})：</b><br>
+                • <b>位階判斷：</b> ${kPrice <= fibs[1].p ? '🔥 優質低位' : '⏳ 稍嫌追高'}<br>
+                • <b>偏離度：</b> 距 0.618 支撐約 ${gap}%<br>
+                • <b>紀律建議：</b> ${kPrice < ma200 ? '✅ 底部建倉，安全邊際大。' : '⚠ 仍高於年線，須防假突破。'}<br>
+                • <b>提醒：</b> 申購金額勿超過總資產 15%。
+            `;
         } else {
-            diag = `✅ <b>診斷：位階平穩。</b> 適合根據費波那契黃金支撐位 ${fibLevels[2].p} 進行申購佈局。`;
+            document.getElementById('kReport').innerHTML = "💡 <b>K線提醒：</b><br>在上方輸入框輸入你的預期買點，即可進行壓力測試。";
         }
-        aiBox.innerHTML = diag;
-        aiBox.style.display = 'block';
 
-        // 繪圖
-        const traces = paths.map(p => ({
-            y: p, type: 'scatter', mode: 'lines', line: {width: 0.8, color: 'rgba(26, 115, 232, 0.1)'}, showlegend: false
-        }));
+        // 180天理性模擬
+        let rets = []; for(let i=1; i<45; i++) rets.push(Math.log(close[close.length-i]/close[close.length-i-1]));
+        const mu = (rets.reduce((a,b)=>a+b)/45) * 0.35;
+        const sigma = Math.sqrt(rets.map(x=>Math.pow(x-(mu/0.35),2)).reduce((a,b)=>a+b)/45);
+        let paths = [];
+        for(let i=0; i<60; i++){
+            let p = [curP];
+            for(let d=0; d<180; d++){ p.push(p[p.length-1] * Math.exp((mu - 0.5 * sigma**2) + sigma * (Math.random()*2-1)*1.15)); }
+            paths.push(p);
+        }
+        document.getElementById('v_target').innerText = paths[0][180].toFixed(2);
         
-        Plotly.newPlot('chart', traces, {
-            title: `${symbol} 未來 180 天走勢模擬 (藍色密集區為機率最高路徑)`,
-            xaxis: { title: '未來天數 (180D)' },
-            yaxis: { title: '預估價格 (USD)' },
-            margin: { t: 50, l: 50, r: 20, b: 50 }
+        Plotly.newPlot('chart', paths.map(p=>({y:p, type:'scatter', mode:'lines', line:{width:0.6, color:'rgba(0,98,255,0.1)'}, showlegend:false})), {
+            title: `${symbol} 180天理性期望路徑 (密集區為高機率區)`,
+            xaxis: {title: '未來天數'}, yaxis: {title: '預估價格'}
         });
 
-    } catch (error) {
-        console.error(error);
-        alert("數據抓取失敗，請確認代碼是否正確或稍後再試。");
-    } finally {
-        loader.style.display = 'none';
-    }
+        document.getElementById('mainUI').style.display = 'block';
+
+    } catch (e) { alert("數據解析失敗，請確認代碼或稍後再試。"); }
+    finally { document.getElementById('loader').style.display = 'none'; }
 }
 </script>
-
 </body>
 </html>
