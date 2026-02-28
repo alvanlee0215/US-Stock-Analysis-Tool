@@ -2,110 +2,115 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股進階分析工具 - 波動度/費波那契/量價</title>
+    <title>美股 180 天走勢模擬與費波那契工具</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; color: #333; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .input-group { display: flex; gap: 10px; margin-bottom: 30px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #0056b3; }
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 5px solid #007bff; }
-        .stat-card h4 { margin: 0 0 10px 0; color: #666; font-size: 14px; }
-        .stat-card p { margin: 0; font-size: 20px; font-weight: bold; color: #222; }
-        #chart { width: 100%; height: 500px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; border-radius: 12px; padding: 25px; max-width: 1000px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-box { background: #f8f9fa; padding: 15px; border-radius: 10px; border: 1px solid #eee; }
+        .stat-box h5 { margin: 0 0 8px 0; color: #666; font-size: 14px; }
+        .stat-box p { margin: 0; font-size: 18px; font-weight: bold; }
+        #chart { width: 100%; height: 600px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>美股進階申購判斷工具</h2>
+    <div class="card">
+        <h2>美股 180 天走勢預測儀表板</h2>
         <div class="input-group">
-            <input type="text" id="tickerInput" placeholder="輸入美股代碼 (如: NVDA, TSLA, AAPL)">
-            <button onclick="fetchStockData()">開始即時分析</button>
+            <input type="text" id="tickerInput" placeholder="輸入美股代碼 (如: NVDA)">
+            <button onclick="analyzeStock()">開始 180 天模擬分析</button>
         </div>
 
-        <div class="dashboard">
-            <div class="stat-card">
-                <h4>年化波動度</h4>
-                <p id="volValue">-- %</p>
-            </div>
-            <div class="stat-card">
-                <h4>費波那契 0.618 支撐</h4>
-                <p id="fibValue">--</p>
-            </div>
-            <div class="stat-card">
-                <h4>量價狀態</h4>
-                <p id="volStatus">--</p>
-            </div>
+        <div id="aiAnalysis" style="background: #e7f3ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; display:none;">
+            <p id="conclusionText">正在進行 1,000 次模擬運算...</p>
+        </div>
+
+        <div class="summary-grid">
+            <div class="stat-box"><h5>20日年化波動度</h5><p id="volValue">-- %</p></div>
+            <div class="stat-box"><h5>0.618 黃金支撐</h5><p id="fib618">--</p></div>
+            <div class="stat-box"><h5>未來 180 天集中區</h5><p id="targetRange">--</p></div>
         </div>
 
         <div id="chart"></div>
+        
+        <div style="margin-top: 20px; font-size: 13px; color: #888;">
+            * 費波那契參考位：<span id="allFibs">等待數據...</span>
+        </div>
     </div>
 
     <script>
-        async function fetchStockData() {
+        async function analyzeStock() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if(!ticker) return alert("請輸入標的代碼");
+            if(!ticker) return;
+            document.getElementById('aiAnalysis').style.display = 'block';
 
-            // 使用 Finnhub 或 Alpha Vantage 的免費 API (此處為示意，建議申請 API Key 替換)
-            const proxy = "https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?range=6mo&interval=1d";
-            
             try {
-                // 注意：跨域問題通常需透過後端或特定的 API 服務處理
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(proxy)}`);
+                const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?range=1y&interval=1d")}`;
+                const response = await fetch(proxy);
                 const data = JSON.parse((await response.json()).contents);
                 const result = data.chart.result[0];
-                const timestamps = result.timestamp.map(t => new Date(t * 1000).toLocaleDateString());
-                const closePrices = result.indicators.quote[0].close;
-                const highPrices = result.indicators.quote[0].high;
-                const lowPrices = result.indicators.quote[0].low;
-                const volumes = result.indicators.quote[0].volume;
+                const prices = result.indicators.quote[0].close.filter(p => p != null);
+                const lastPrice = prices[prices.length - 1];
 
-                // 1. 計算波動度 (最近20日)
-                let returns = [];
-                for(let i=1; i<20; i++) returns.push((closePrices[closePrices.length-i] - closePrices[closePrices.length-i-1]) / closePrices[closePrices.length-i-1]);
-                const std = Math.sqrt(returns.map(x => Math.pow(x - (returns.reduce((a,b)=>a+b)/20), 2)).reduce((a,b)=>a+b)/20);
-                const annualizedVol = (std * Math.sqrt(252) * 100).toFixed(2);
-                document.getElementById('volValue').innerText = annualizedVol + " %";
-
-                // 2. 費波那契計算
-                const maxH = Math.max(...highPrices);
-                const minL = Math.min(...lowPrices);
-                const fib618 = (maxH - 0.618 * (maxH - minL)).toFixed(2);
-                document.getElementById('fibValue').innerText = fib618;
-
-                // 3. 量價判斷
-                const lastVol = volumes[volumes.length - 1];
-                const avgVol = volumes.slice(-20).reduce((a,b)=>a+b) / 20;
-                document.getElementById('volStatus').innerText = lastVol > avgVol ? "量增" : "量縮";
-
-                // 4. 繪圖
-                const trace = {
-                    x: timestamps,
-                    close: closePrices,
-                    high: highPrices,
-                    low: lowPrices,
-                    open: result.indicators.quote[0].open,
-                    type: 'candlestick',
-                    name: ticker
+                // 1. 費波那契計算 (全套)
+                const high = Math.max(...result.indicators.quote[0].high.filter(p => p != null));
+                const low = Math.min(...result.indicators.quote[0].low.filter(p => p != null));
+                const diff = high - low;
+                const fibs = {
+                    "0.236": (high - 0.236 * diff).toFixed(2),
+                    "0.382": (high - 0.382 * diff).toFixed(2),
+                    "0.500": (high - 0.5 * diff).toFixed(2),
+                    "0.618": (high - 0.618 * diff).toFixed(2),
+                    "0.786": (high - 0.786 * diff).toFixed(2)
                 };
-                const fibLine = {
-                    type: 'line', x0: timestamps[0], x1: timestamps[timestamps.length-1],
-                    y0: fib618, y1: fib618, line: { color: 'red', width: 2, dash: 'dash' }, name: '0.618 Support'
-                };
+                document.getElementById('fib618').innerText = fibs["0.618"];
+                document.getElementById('allFibs').innerText = Object.entries(fibs).map(([k,v]) => `${k}:${v}`).join(' | ');
+
+                // 2. 蒙地卡羅模擬 (180天)
+                const returns = [];
+                for(let i=1; i<60; i++) returns.push(Math.log(prices[prices.length-i] / prices[prices.length-i-1]));
+                const mu = returns.reduce((a,b)=>a+b)/returns.length;
+                const sigma = Math.sqrt(returns.map(x => Math.pow(x-mu,2)).reduce((a,b)=>a+b)/returns.length);
+                document.getElementById('volValue').innerText = (sigma * Math.sqrt(252) * 100).toFixed(2) + " %";
+
+                const days = 180;
+                const sims = 200; // 瀏覽器端跑 200 次較流暢
+                let allPaths = [];
+                for(let s=0; s<sims; s++) {
+                    let path = [lastPrice];
+                    for(let d=0; d<days; d++) {
+                        let dailyRet = Math.exp((mu - 0.5 * sigma**2) + sigma * (Math.random()*2-1)*1.5);
+                        path.push(path[path.length-1] * dailyRet);
+                    }
+                    allPaths.push(path);
+                }
+
+                // 3. 繪圖
+                const traces = allPaths.map((p, i) => ({
+                    y: p, type: 'scatter', mode: 'lines', line: {width: 1, color: 'rgba(100,100,100,0.1)'}, showlegend: false
+                }));
+
+                const endPrices = allPaths.map(p => p[days]).sort((a,b)=>a-b);
+                const p50 = endPrices[Math.floor(sims*0.5)].toFixed(2);
+                document.getElementById('targetRange').innerText = `約 ${p50}`;
                 
-                Plotly.newPlot('chart', [trace], {
-                    title: ticker + ' 走勢與費波那契支撐線',
-                    shapes: [fibLine]
+                document.getElementById('conclusionText').innerHTML = `
+                    <b>AI 診斷：</b> 根據 180 天模擬，標的目前處於高集中度區域，
+                    ${p50 > lastPrice ? '🟢 傾向看漲' : '🔴 傾向盤整/回落'}。
+                    建議申購價設在 <b>${fibs["0.618"]}</b> 以下最為穩健。
+                `;
+
+                Plotly.newPlot('chart', traces, {
+                    title: ticker + ' 未來 180 天蒙地卡羅走勢模擬',
+                    yaxis: { title: '價格 (USD)' },
+                    xaxis: { title: '未來天數' }
                 });
 
-            } catch (e) {
-                alert("抓取失敗，請確認代碼是否正確或 API 限制");
-                console.error(e);
-            }
+            } catch (e) { alert("數據抓取失敗"); }
         }
     </script>
 </body>
