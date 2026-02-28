@@ -3,27 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股勝率診斷儀 - 終極抗封鎖版</title>
+    <title>美股勝率診斷儀 - 終極整合版</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 20px; margin: 0; }
-        .card { background: white; border-radius: 16px; padding: 25px; max-width: 600px; margin: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+        .card { background: white; border-radius: 16px; padding: 25px; max-width: 650px; margin: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        input { flex: 1; padding: 15px; border: 2px solid #eee; border-radius: 12px; font-size: 16px; outline: none; }
+        input { flex: 1; min-width: 120px; padding: 15px; border: 2px solid #eee; border-radius: 12px; font-size: 16px; outline: none; }
         button { padding: 15px; background: #0062ff; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        button:disabled { background: #ccc; }
         .status { text-align: center; color: #0062ff; font-weight: bold; display: none; margin: 15px 0; }
-        .result-box { background: #f8f9fa; border-left: 6px solid #0062ff; padding: 20px; border-radius: 10px; margin-top: 20px; display: none; line-height: 1.8; }
-        #chart { width: 100%; height: 400px; margin-top: 20px; }
+        .result-box { background: #f8f9fa; border-left: 6px solid #0062ff; padding: 20px; border-radius: 10px; margin-top: 20px; display: none; line-height: 1.8; font-size: 14px; }
+        .k-eval { background: #fff; border: 2px solid #e7f3ff; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 6px solid #28a745; }
+        #chart { width: 100%; height: 450px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 style="text-align:center;">⚖️ 美股勝率診斷儀</h2>
+    <h2 style="text-align:center;">⚖️ 美股終極勝率診斷儀</h2>
     <div class="input-group">
-        <input type="text" id="symbol" placeholder="代碼 (如: PLTR, NVDA)">
-        <button id="btn" onclick="runSafeAnalysis()">啟動深度診斷</button>
+        <input type="text" id="symbol" placeholder="代碼 (如: PLTR)">
+        <input type="number" id="myPrice" placeholder="K 線預期申購價">
+        <button id="btn" onclick="runFinalAnalysis()">啟動全要素診斷</button>
     </div>
 
     <div id="loader" class="status">⚙️ 正在穿透加密通道抓取數據...</div>
@@ -32,20 +34,19 @@
 </div>
 
 <script>
-async function runSafeAnalysis() {
+async function runFinalAnalysis() {
     const sym = document.getElementById('symbol').value.toUpperCase().trim();
+    const myP = parseFloat(document.getElementById('myPrice').value);
     if(!sym) return;
 
     const btn = document.getElementById('btn');
     const loader = document.getElementById('loader');
     const resBox = document.getElementById('result');
 
-    // 啟動冷卻機制，防止連點
     btn.disabled = true;
     loader.style.display = 'block';
     resBox.style.display = 'none';
 
-    // 雙代理 + 隨機標籤 (防封鎖核心)
     const proxies = [
         u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}&_t=${Date.now()}`,
         u => `https://corsproxy.io/?${encodeURIComponent(u + '&_cb=' + Date.now())}`
@@ -63,42 +64,48 @@ async function runSafeAnalysis() {
     }
 
     try {
-        // 抓取 K 線
         const c = await smartFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=2y&interval=1d`);
-        await new Promise(r => setTimeout(r, 1500)); // 強制休息
-        // 抓取基本面
+        await new Promise(r => setTimeout(r, 1200)); 
         const f = await smartFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=summaryDetail,financialData`);
 
         const quotes = c.chart.result[0].indicators.quote[0].close.filter(v => v != null);
         const curP = quotes[quotes.length - 1];
         const ma200 = quotes.slice(-200).reduce((a,b)=>a+b)/200;
         const bias = ((curP - ma200)/ma200*100).toFixed(2);
+        const hi = Math.max(...c.chart.result[0].indicators.quote[0].high.filter(v=>v!=null));
+        const lo = Math.min(...c.chart.result[0].indicators.quote[0].low.filter(v=>v!=null));
+        const fib618 = hi - 0.618 * (hi - lo);
         const stop = (Math.max(...quotes.slice(-20)) * 0.85).toFixed(2);
 
-        resBox.innerHTML = `
-            <b>📊 ${sym} 診斷結果：</b><br>
-            • 現價：$${curP.toFixed(2)}<br>
-            • 年線乖離 (Bias)：${bias}%<br>
+        let report = `<b>📊 ${sym} 即時診斷：</b><br>
+            • 現價：$${curP.toFixed(2)} | 年線乖離：${bias}%<br>
             • <b>動態停利線：$${stop}</b><br>
-            • 建議：${bias > 30 ? '⚠ 過熱請減碼' : '✅ 位階尚可'}<br>
-            <small>💡 跌破 $${stop} 請務必執行停損紀律。</small>
-        `;
+            • 費波那契 0.618：$${fib618.toFixed(2)}<br>`;
+
+        if(myP) {
+            const gap = ((myP - fib618)/fib618*100).toFixed(1);
+            report += `<div class="k-eval"><b>🎯 K 線價壓力測試 ($${myP})：</b><br>
+                位階：${myP <= fib618 ? '🔥 優質支撐區' : '⏳ 稍微追高'}<br>
+                偏離度：距 0.618 支撐約 ${gap}%<br>
+                建議：${Math.abs(gap) < 5 ? '✅ 數據與 K 線重合，勝率極高' : '⚠ 建議等回測 0.618 再申購'}</div>`;
+        }
+
+        resBox.innerHTML = report + `<small>💡 跌破 $${stop} 務必執行減碼紀律。</small>`;
         resBox.style.display = 'block';
 
-        // 簡易路徑模擬
         let paths = [];
         for(let i=0; i<30; i++){
             let p = [curP];
-            for(let d=0; d<180; d++){ p.push(p[p.length-1] * (1 + (Math.random()-0.48)*0.04)); }
+            for(let d=0; d<180; d++){ p.push(p[p.length-1] * (1 + (Math.random()-0.49)*0.035)); }
             paths.push(p);
         }
-        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.5, color:'rgba(0,98,255,0.1)'}, showlegend:false})), {title: '180天理性期望路徑'});
+        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.5, color:'rgba(0,98,255,0.1)'}, showlegend:false})), {title: '180天理性機率預測'});
 
     } catch (e) {
-        alert("Yahoo 暫時封鎖連線。請開啟手機「飛航模式」10秒後關閉，再重新整理網頁試試。");
+        alert("Yahoo 封鎖中。請換 IP (飛航模式) 並等待 30 秒再試。");
     } finally {
         loader.style.display = 'none';
-        setTimeout(() => { btn.disabled = false; }, 3000); // 3秒後才允許再次點擊
+        setTimeout(() => { btn.disabled = false; }, 3000);
     }
 }
 </script>
