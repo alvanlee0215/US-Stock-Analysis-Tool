@@ -2,116 +2,182 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>美股 180 天走勢模擬與費波那契工具</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股全能分析儀 - 走勢模擬與申購判斷</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 20px; }
-        .card { background: white; border-radius: 12px; padding: 25px; max-width: 1000px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
-        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
-        .stat-box { background: #f8f9fa; padding: 15px; border-radius: 10px; border: 1px solid #eee; }
-        .stat-box h5 { margin: 0 0 8px 0; color: #666; font-size: 14px; }
-        .stat-box p { margin: 0; font-size: 18px; font-weight: bold; }
-        #chart { width: 100%; height: 600px; }
+        body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: #f4f7f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { color: #1a73e8; margin-top: 0; }
+        
+        .input-group { display: flex; gap: 10px; margin-bottom: 25px; }
+        input { flex: 1; padding: 15px; border: 2px solid #edf2f7; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #1a73e8; }
+        button { padding: 15px 30px; background: #1a73e8; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button:hover { background: #1557b0; }
+
+        .ai-card { background: #e8f0fe; border-left: 5px solid #1a73e8; padding: 20px; border-radius: 8px; margin-bottom: 25px; line-height: 1.6; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: center; }
+        .stat-box span { font-size: 12px; color: #70757a; display: block; margin-bottom: 5px; }
+        .stat-box b { font-size: 20px; color: #202124; }
+
+        .fib-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fafafa; border-radius: 8px; overflow: hidden; }
+        .fib-table th, .fib-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .fib-table th { background: #f1f3f4; color: #5f6368; font-size: 13px; }
+        
+        #chart { width: 100%; height: 500px; margin-top: 20px; border-radius: 10px; overflow: hidden; }
+        .loading { display: none; color: #1a73e8; font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>美股 180 天走勢預測儀表板</h2>
-        <div class="input-group">
-            <input type="text" id="tickerInput" placeholder="輸入美股代碼 (如: NVDA)">
-            <button onclick="analyzeStock()">開始 180 天模擬分析</button>
-        </div>
 
-        <div id="aiAnalysis" style="background: #e7f3ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; display:none;">
-            <p id="conclusionText">正在進行 1,000 次模擬運算...</p>
-        </div>
-
-        <div class="summary-grid">
-            <div class="stat-box"><h5>20日年化波動度</h5><p id="volValue">-- %</p></div>
-            <div class="stat-box"><h5>0.618 黃金支撐</h5><p id="fib618">--</p></div>
-            <div class="stat-box"><h5>未來 180 天集中區</h5><p id="targetRange">--</p></div>
-        </div>
-
-        <div id="chart"></div>
-        
-        <div style="margin-top: 20px; font-size: 13px; color: #888;">
-            * 費波那契參考位：<span id="allFibs">等待數據...</span>
-        </div>
+<div class="container">
+    <h2>📊 美股全能走勢分析儀</h2>
+    <p style="color: #666; font-size: 14px;">適用於：強勢股回檔 (如 MU) 與 下跌股抄底 (如 TSLA)</p>
+    
+    <div class="input-group">
+        <input type="text" id="symbolInput" placeholder="輸入美股代碼 (例如: MU 或 NVDA)">
+        <button onclick="startAnalysis()">執行 180 天模擬分析</button>
     </div>
 
-    <script>
-        async function analyzeStock() {
-            const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if(!ticker) return;
-            document.getElementById('aiAnalysis').style.display = 'block';
+    <div id="loader" class="loading">⚙️ 正在向大數據接口請求並進行 1,000 次路徑模擬...</div>
 
-            try {
-                const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?range=1y&interval=1d")}`;
-                const response = await fetch(proxy);
-                const data = JSON.parse((await response.json()).contents);
-                const result = data.chart.result[0];
-                const prices = result.indicators.quote[0].close.filter(p => p != null);
-                const lastPrice = prices[prices.length - 1];
+    <div id="aiConclusion" class="ai-card" style="display:none;"></div>
 
-                // 1. 費波那契計算 (全套)
-                const high = Math.max(...result.indicators.quote[0].high.filter(p => p != null));
-                const low = Math.min(...result.indicators.quote[0].low.filter(p => p != null));
-                const diff = high - low;
-                const fibs = {
-                    "0.236": (high - 0.236 * diff).toFixed(2),
-                    "0.382": (high - 0.382 * diff).toFixed(2),
-                    "0.500": (high - 0.5 * diff).toFixed(2),
-                    "0.618": (high - 0.618 * diff).toFixed(2),
-                    "0.786": (high - 0.786 * diff).toFixed(2)
-                };
-                document.getElementById('fib618').innerText = fibs["0.618"];
-                document.getElementById('allFibs').innerText = Object.entries(fibs).map(([k,v]) => `${k}:${v}`).join(' | ');
+    <div class="grid">
+        <div class="stat-box"><span>目前市價</span><b id="currPrice">--</b></div>
+        <div class="stat-box"><span>年線乖離率 (Bias)</span><b id="biasValue">--%</b></div>
+        <div class="stat-box"><span>180天預估中位</span><b id="targetPrice">--</b></div>
+    </div>
 
-                // 2. 蒙地卡羅模擬 (180天)
-                const returns = [];
-                for(let i=1; i<60; i++) returns.push(Math.log(prices[prices.length-i] / prices[prices.length-i-1]));
-                const mu = returns.reduce((a,b)=>a+b)/returns.length;
-                const sigma = Math.sqrt(returns.map(x => Math.pow(x-mu,2)).reduce((a,b)=>a+b)/returns.length);
-                document.getElementById('volValue').innerText = (sigma * Math.sqrt(252) * 100).toFixed(2) + " %";
+    <table class="fib-table" id="fibTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>費波那契位階</th>
+                <th>參考價格</th>
+                <th>申購場景建議</th>
+            </tr>
+        </thead>
+        <tbody id="fibResults"></tbody>
+    </table>
 
-                const days = 180;
-                const sims = 200; // 瀏覽器端跑 200 次較流暢
-                let allPaths = [];
-                for(let s=0; s<sims; s++) {
-                    let path = [lastPrice];
-                    for(let d=0; d<days; d++) {
-                        let dailyRet = Math.exp((mu - 0.5 * sigma**2) + sigma * (Math.random()*2-1)*1.5);
-                        path.push(path[path.length-1] * dailyRet);
-                    }
-                    allPaths.push(path);
-                }
+    <div id="chart"></div>
+</div>
 
-                // 3. 繪圖
-                const traces = allPaths.map((p, i) => ({
-                    y: p, type: 'scatter', mode: 'lines', line: {width: 1, color: 'rgba(100,100,100,0.1)'}, showlegend: false
-                }));
+<script>
+async function startAnalysis() {
+    const symbol = document.getElementById('symbolInput').value.toUpperCase().trim();
+    if (!symbol) return alert("請輸入股票代碼");
 
-                const endPrices = allPaths.map(p => p[days]).sort((a,b)=>a-b);
-                const p50 = endPrices[Math.floor(sims*0.5)].toFixed(2);
-                document.getElementById('targetRange').innerText = `約 ${p50}`;
-                
-                document.getElementById('conclusionText').innerHTML = `
-                    <b>AI 診斷：</b> 根據 180 天模擬，標的目前處於高集中度區域，
-                    ${p50 > lastPrice ? '🟢 傾向看漲' : '🔴 傾向盤整/回落'}。
-                    建議申購價設在 <b>${fibs["0.618"]}</b> 以下最為穩健。
-                `;
+    const loader = document.getElementById('loader');
+    const aiBox = document.getElementById('aiConclusion');
+    const fibTable = document.getElementById('fibTable');
+    
+    loader.style.display = 'block';
+    aiBox.style.display = 'none';
 
-                Plotly.newPlot('chart', traces, {
-                    title: ticker + ' 未來 180 天蒙地卡羅走勢模擬',
-                    yaxis: { title: '價格 (USD)' },
-                    xaxis: { title: '未來天數' }
-                });
+    try {
+        // 使用 AllOrigins 代理繞過 CORS 限制
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+        
+        const response = await fetch(proxyUrl);
+        const rawData = await response.json();
+        const data = JSON.parse(rawData.contents).chart.result[0];
+        
+        const indicators = data.indicators.quote[0];
+        const closePrices = indicators.close.filter(p => p != null);
+        const highPrices = indicators.high.filter(p => p != null);
+        const lowPrices = indicators.low.filter(p => p != null);
+        
+        const currentPrice = closePrices[closePrices.length - 1];
+        
+        // 1. 年線乖離率計算 (200MA Bias)
+        const ma200 = closePrices.slice(-200).reduce((a, b) => a + b) / 200;
+        const bias = ((currentPrice - ma200) / ma200 * 100).toFixed(2);
 
-            } catch (e) { alert("數據抓取失敗"); }
+        // 2. 費波那契計算 (全套)
+        const rangeHigh = Math.max(...highPrices);
+        const rangeLow = Math.min(...lowPrices);
+        const diff = rangeHigh - rangeLow;
+        
+        const fibLevels = [
+            {lv: "0.382", p: (rangeHigh - 0.382 * diff).toFixed(2), note: "強勢股回檔支撐 (適合作多)"},
+            {lv: "0.500", p: (rangeHigh - 0.500 * diff).toFixed(2), note: "多空分水嶺"},
+            {lv: "0.618", p: (rangeHigh - 0.618 * diff).toFixed(2), note: "黃金分割支撐 (穩健申購價)"},
+            {lv: "0.786", p: (rangeHigh - 0.786 * diff).toFixed(2), note: "深層修正底線 (抄底參考)"}
+        ];
+
+        // 3. 蒙地卡羅模擬 (180天)
+        let returns = [];
+        for (let i = 1; i < 60; i++) {
+            returns.push(Math.log(closePrices[closePrices.length - i] / closePrices[closePrices.length - i - 1]));
         }
-    </script>
+        const mu = returns.reduce((a, b) => a + b) / returns.length;
+        const sigma = Math.sqrt(returns.map(x => Math.pow(x - mu, 2)).reduce((a, b) => a + b) / returns.length);
+        
+        const days = 180;
+        const sims = 120; // 模擬次數
+        let paths = [];
+        let finalPrices = [];
+
+        for (let i = 0; i < sims; i++) {
+            let p = [currentPrice];
+            for (let d = 0; d < days; d++) {
+                let change = (mu - 0.5 * sigma**2) + sigma * (Math.random() * 2 - 1) * 1.5;
+                p.push(p[p.length - 1] * Math.exp(change));
+            }
+            paths.push(p);
+            finalPrices.push(p[days]);
+        }
+
+        const medianTarget = (finalPrices.sort((a, b) => a - b)[Math.floor(sims / 2)]).toFixed(2);
+
+        // 更新介面數據
+        document.getElementById('currPrice').innerText = currentPrice.toFixed(2);
+        document.getElementById('biasValue').innerText = bias + "%";
+        document.getElementById('targetPrice').innerText = medianTarget;
+
+        let fibHtml = "";
+        fibLevels.forEach(f => {
+            fibHtml += `<tr><td>${f.lv}</td><td><b>${f.p}</b></td><td>${f.note}</td></tr>`;
+        });
+        document.getElementById('fibResults').innerHTML = fibHtml;
+        fibTable.style.display = 'table';
+
+        // 診斷結論
+        let diag = "";
+        if (bias > 15) {
+            diag = `💡 <b>診斷：漲幅已高。</b> 目前年線乖離率 ${bias}% 偏高，建議等待價格拉回到 0.382 位階 (約 ${fibLevels[0].p}) 再行申購較安全。`;
+        } else if (bias < -15) {
+            diag = `🔥 <b>診斷：嚴重超跌。</b> 目前具備強大抄底潛力。建議參考 0.618 (${fibLevels[2].p}) 或 0.786 (${fibLevels[3].p}) 作為申購底線。`;
+        } else {
+            diag = `✅ <b>診斷：位階平穩。</b> 適合根據費波那契黃金支撐位 ${fibLevels[2].p} 進行申購佈局。`;
+        }
+        aiBox.innerHTML = diag;
+        aiBox.style.display = 'block';
+
+        // 繪圖
+        const traces = paths.map(p => ({
+            y: p, type: 'scatter', mode: 'lines', line: {width: 0.8, color: 'rgba(26, 115, 232, 0.1)'}, showlegend: false
+        }));
+        
+        Plotly.newPlot('chart', traces, {
+            title: `${symbol} 未來 180 天走勢模擬 (藍色密集區為機率最高路徑)`,
+            xaxis: { title: '未來天數 (180D)' },
+            yaxis: { title: '預估價格 (USD)' },
+            margin: { t: 50, l: 50, r: 20, b: 50 }
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert("數據抓取失敗，請確認代碼是否正確或稍後再試。");
+    } finally {
+        loader.style.display = 'none';
+    }
+}
+</script>
+
 </body>
 </html>
