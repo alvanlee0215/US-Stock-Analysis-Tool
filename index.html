@@ -2,133 +2,87 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 獵人 12.8 - 年度籌碼實戰系統</title>
+    <title>AI 獵人 30.0 - 全自主診斷終端</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #0b0e11; color: #d1d4dc; padding: 20px; }
-        .card { background: #161a1e; border-radius: 12px; border: 1px solid #2b2f36; padding: 25px; max-width: 1000px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .search-area { display: flex; gap: 10px; margin-bottom: 25px; }
-        .search-input { flex: 1; background: #1e2329; border: 1px solid #474d57; color: #fff; padding: 15px; border-radius: 6px; font-size: 1.2em; text-transform: uppercase; }
-        .btn-run { background: #f0b90b; color: #000; font-weight: bold; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; font-size: 1.1em; transition: 0.2s; }
-        .btn-run:hover { background: #e67e22; transform: translateY(-2px); }
-        .monitor-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 25px; }
-        .monitor-box { background: #0b1e2d; padding: 12px; border-radius: 8px; text-align: center; border-top: 4px solid #3498db; }
-        .val { font-size: 22px; font-weight: bold; color: #fff; display: block; margin-bottom: 5px; }
-        .label { font-size: 0.75em; color: #848e9c; }
-        .sigma-extreme { border-top: 4px solid #e74c3c; }
-        .chart-container { background: #1e2329; padding: 15px; border-radius: 8px; height: 450px; margin-bottom: 20px; }
-        .audit-panel { background: #2b3139; padding: 20px; border-radius: 8px; font-size: 0.9em; border: 1px solid #474d57; line-height: 1.8; }
-        .highlight { color: #f0b90b; font-weight: bold; }
+        .card { background: #161a1e; border-radius: 12px; border: 1px solid #2b2f36; padding: 25px; max-width: 950px; margin: auto; }
+        .input-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 0.85em; color: #848e9c; }
+        .input-box { background: #0b1116; border: 1px solid #474d57; color: #fff; padding: 12px; border-radius: 6px; }
+        .btn-run { background: #f0b90b; color: #000; font-weight: bold; border: none; padding: 15px; border-radius: 6px; cursor: pointer; grid-column: span 4; font-size: 1.1em; margin-top: 10px; }
+        .res-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .res-box { background: #0b1e2d; padding: 15px; border-radius: 8px; text-align: center; border-top: 4px solid #3498db; }
+        .val { font-size: 22px; font-weight: bold; color: #fff; display: block; }
+        .chart-container { background: #1e2329; padding: 15px; border-radius: 8px; height: 400px; }
     </style>
 </head>
 <body>
 <div class="card">
-    <h2>🛡️ 獵人 12.8：年度籌碼牆 ($POC$) 與動態 IV 診斷</h2>
-    
-    <div class="search-area">
-        <input type="text" id="ticker" class="search-input" placeholder="輸入標的代號 (例如: MU, NVDA, TSM)...">
-        <button class="btn-run" onclick="run128()">啟動年度數據診斷</button>
+    <div class="input-grid">
+        <div class="input-group"><label>標代號</label><input type="text" id="sym" class="input-box" placeholder="如: NVDA"></div>
+        <div class="input-group"><label>目前現價 (P)</label><input type="number" id="curP" class="input-box" placeholder="輸入最新價"></div>
+        <div class="input-group"><label>9/18 IV (%)</label><input type="number" id="curIV" class="input-box" placeholder="輸入 IV"></div>
+        <div class="input-group"><label>2026 EPS (虧損填負)</label><input type="number" id="curE" class="input-box" placeholder="估值參考"></div>
+        <button class="btn-run" onclick="run300()">啟動實時數據建模</button>
     </div>
 
-    <div id="resultsLayout" style="display:none;">
-        <div class="monitor-grid">
-            <div class="monitor-box"><span id="resWin" class="val">--</span><span class="label">180D 生存率</span></div>
-            <div class="monitor-box"><span id="resPOC" class="val">--</span><span class="label">年度錢牆 (POC)</span></div>
-            <div class="monitor-box"><span id="resS1" class="val">--</span><span class="label">1σ 正常震盪</span></div>
-            <div class="monitor-box sigma-extreme"><span id="resS2" class="val">--</span><span class="label">2σ 崩盤底</span></div>
-            <div class="monitor-box"><span id="resIV" class="val">--</span><span class="label">遠期 IV (180D)</span></div>
+    <div id="resLayout" style="display:none;">
+        <div class="res-grid">
+            <div class="res-box"><span id="vWin" class="val">--</span><span class="label">180D 生存率</span></div>
+            <div class="res-box"><span id="vS1" class="val">--</span><span class="label">1σ (正常波動底)</span></div>
+            <div class="res-box" style="border-top-color:#e74c3c"><span id="vS2" class="val">--</span><span class="label">2σ (崩盤物理底)</span></div>
         </div>
-
         <div class="chart-container"><canvas id="mcChart"></canvas></div>
-
-        <div class="audit-panel" id="audit"></div>
+        <div id="audit" style="margin-top:20px; line-height:1.6; color:#f0b90b;"></div>
     </div>
 </div>
 
 <script>
 let chart;
+function run300() {
+    const p0 = parseFloat(document.getElementById('curP').value);
+    const ivRaw = parseFloat(document.getElementById('curIV').value);
+    const eps = parseFloat(document.getElementById('curE').value);
+    if (!p0 || !ivRaw) { alert("資訊不足，獵人無法開火。"); return; }
 
-// --- 由 Gemini 維護的年度數據庫 (更新日: 2026-03-02) ---
-// 依據過去 252 交易日之 Volume Profile POC 數據
-const hunterDB = {
-    "MU":   { p: 400, iv: 68, e: 18.5, pe: 12, poc: 345, desc: "記憶體週期吸籌牆" },
-    "NVDA": { p: 177, iv: 44, e: 5.15, pe: 30, poc: 142, desc: "AI 龍頭換手鐵底" },
-    "TSM":  { p: 215, iv: 35, e: 9.8,  pe: 22, poc: 195, desc: "2nm 預期建倉位" },
-    "META": { p: 645, iv: 32, e: 30.2, pe: 21, poc: 605, desc: "廣告收益跳空牆" },
-    "AVGO": { p: 210, iv: 38, e: 11.5, pe: 18, poc: 185, desc: "網路晶片博弈位" }
-};
-
-function run128() {
-    const sym = document.getElementById('ticker').value.toUpperCase();
-    const data = hunterDB[sym];
-
-    if (!data) {
-        alert("⚠️ 尚未收錄標的 " + sym + " 的年度 POC 數據，請聯絡 Gemini 獲取。");
-        return;
-    }
-
-    const today = new Date();
-    const targetDate = new Date(); targetDate.setDate(today.getDate() + 180);
-    const dateStr = `${targetDate.getFullYear()}年${targetDate.getMonth()+1}月`;
-
-    const p0 = data.p, iv = data.iv / 100, poc = data.poc;
-    
-    // --- 標準差邏輯 (時間對位換算) ---
-    const dailyIV = iv / Math.sqrt(252);
-    const s1 = (p0 * (1 - dailyIV * Math.sqrt(30))).toFixed(1); // 短期 30 天 1-sigma
-    const s2 = (p0 * (1 - dailyIV * Math.sqrt(180) * 2)).toFixed(1); // 半年期 2-sigma 崩盤位
-
-    // --- 蒙地卡羅 3000 次路徑模擬 ---
-    let win = 0, trials = 3000, paths = [];
-    for (let i = 0; i < trials; i++) {
-        let p = p0, path = [p0];
+    const iv = ivRaw / 100;
+    let win = 0; let paths = [];
+    for (let i = 0; i < 3000; i++) {
+        let p = p0; let path = [p0];
         for (let d = 0; d < 180; d++) {
-            // 隨機路徑公式：Geometric Brownian Motion
             p *= Math.exp((0.04 - 0.5 * iv * iv) * (1/252) + iv * Math.sqrt(1/252) * (Math.random()*2-1)*1.732);
             if (i < 30) path.push(p);
         }
         if (p > p0) win++; if (i < 30) paths.push(path);
     }
 
-    // 顯示結果
-    document.getElementById('resultsLayout').style.display = 'block';
-    document.getElementById('resWin').innerText = (win/trials*100).toFixed(1) + "%";
-    document.getElementById('resIV').innerText = data.iv + "%";
-    document.getElementById('resPOC').innerText = "$" + poc;
-    document.getElementById('resS1').innerText = "$" + s1;
-    document.getElementById('resS2').innerText = "$" + s2;
+    const s1 = (p0 * Math.exp(-iv * Math.sqrt(180/365) * 1)).toFixed(2);
+    const s2 = (p0 * Math.exp(-iv * Math.sqrt(180/365) * 2)).toFixed(2);
 
-    // 診斷報告顯示
-    document.getElementById('audit').innerHTML = `
-        <b>🔍 年度數據複核報告 (數據區間: 2025/03 - 2026/03)</b><br>
-        標的代號：<span class="highlight">${sym}</span> | 現價：<span class="highlight">$${p0}</span> | 年度錢牆 (POC)：<span class="highlight">$${poc}</span> (${data.desc})<br>
-        鎖定遠期波動率：<span class="highlight">${data.iv}%</span> (對應 ${dateStr} 到期之虛值期權)<br>
-        🛡️ <b>防禦深度：</b> 正常波動預估至 $${s1}；若發生極端崩盤，理論底部在 <span class="highlight">$${s2}</span>。<br>
-        📢 <b>獵人指令：</b> 現價買入之勝率僅為 <span class="highlight">${(win/trials*100).toFixed(1)}%</span>。建議將主力部隊埋伏在籌碼牆 <span class="highlight">$${poc}</span> 附近，並以 $${s2} 作為末日加碼區。
-    `;
+    document.getElementById('resLayout').style.display = 'block';
+    document.getElementById('vWin').innerText = (win/3000*100).toFixed(1) + "%";
+    document.getElementById('vS1').innerText = "$" + s1;
+    document.getElementById('vS2').innerText = "$" + s2;
 
-    updateChart(paths, poc, s2, sym);
+    const peText = eps > 0 ? (p0/eps).toFixed(1) + "x PE" : "虧損中 (請評估前景)";
+    document.getElementById('audit').innerHTML = `<b>📊 綜合診斷：</b> 估值為 ${peText}。若現價跌至 <span style="color:#fff">$${s1}</span> 屬於正常波動區。`;
+
+    updateChart(paths, s2);
 }
 
-function updateChart(paths, poc, s2, name) {
+function updateChart(paths, s2) {
     const ctx = document.getElementById('mcChart').getContext('2d');
     if (chart) chart.destroy();
     chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: Array.from({length: 181}, (_, i) => i),
-            datasets: paths.map((p, i) => ({ data: p, borderColor: p[180] > paths[0][0] ? 'rgba(14,203,129,0.3)' : 'rgba(246,70,93,0.3)', borderWidth: 1, pointRadius: 0, fill: false }))
-            .concat([
-                { label: '實體籌碼牆 (POC)', data: Array(181).fill(poc), borderColor: '#f0b90b', borderDash: [5,5], borderWidth: 3, pointRadius: 0 },
-                { label: '極端底 (2σ)', data: Array(181).fill(s2), borderColor: '#e74c3c', borderDash: [2,2], borderWidth: 2, pointRadius: 0 }
-            ])
+            datasets: paths.map(p => ({ data: p, borderColor: p[180] > paths[0][0] ? 'rgba(14,203,129,0.3)' : 'rgba(246,70,93,0.3)', borderWidth: 1, pointRadius: 0, fill: false }))
+            .concat([{ label: '2σ', data: Array(181).fill(s2), borderColor: '#e74c3c', borderDash: [5,5], borderWidth: 2, pointRadius: 0 }])
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            plugins: { legend: { display: false }, title: { display: true, text: name + ' 年度籌碼位階與 180D 路徑模擬', color: '#fff' } },
-            scales: { y: { grid: { color: '#2b2f36' }, ticks: { color: '#848e9c' } }, x: { grid: { display: false }, ticks: { color: '#848e9c' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 }
 </script>
