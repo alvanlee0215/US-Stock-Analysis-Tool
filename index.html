@@ -2,112 +2,121 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEU 獲利守護者 - 最終版</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>AI 獵人終極系統 8.0 - FINAL</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 15px; margin: 0; }
-        .card { background: #1e293b; border-radius: 24px; padding: 25px; max-width: 600px; margin: 20px auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid #334155; }
-        .input-group { display: flex; gap: 12px; margin-bottom: 25px; flex-direction: column; }
-        input { background: #334155; border: 2px solid #475569; border-radius: 14px; padding: 16px; color: white; font-size: 18px; outline: none; }
-        button { background: #3b82f6; color: white; border: none; border-radius: 14px; padding: 16px; font-weight: bold; cursor: pointer; font-size: 18px; }
-        button:active { transform: scale(0.98); background: #2563eb; }
-        .score-box { background: linear-gradient(135deg, #1d4ed8, #3b82f6); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 25px; display: none; }
-        .score-val { font-size: 56px; font-weight: 900; display: block; line-height: 1; margin: 10px 0; }
-        .report { background: #334155; padding: 20px; border-radius: 16px; font-size: 15px; line-height: 1.8; display: none; border-left: 6px solid #3b82f6; margin-bottom: 20px; }
-        #chart { width: 100%; height: 450px; border-radius: 20px; overflow: hidden; }
-        .loading { display: none; text-align: center; color: #3b82f6; font-weight: bold; padding: 20px; }
+        body { font-family: 'Inter', sans-serif; background: #0b0e11; color: #d1d4dc; padding: 20px; }
+        .card { background: #161a1e; border-radius: 12px; border: 1px solid #2b2f36; padding: 25px; max-width: 1000px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .data-panel { background: #1e2329; padding: 20px; border-radius: 8px; border: 1px solid #343d4b; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 0.8em; color: #848e9c; margin-bottom: 5px; }
+        input, select { background: #2b3139; border: 1px solid #474d57; color: #fff; padding: 10px; border-radius: 4px; }
+        .btn-run { background: #f0b90b; color: #000; font-weight: bold; border: none; padding: 18px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: 0.2s; }
+        .btn-run:hover { background: #e67e22; transform: translateY(-2px); }
+        .monitor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 25px; }
+        .monitor-box { background: #0b1e2d; padding: 15px; border-radius: 8px; text-align: center; border-top: 4px solid #3498db; }
+        .val { font-size: 28px; font-weight: bold; color: #fff; display: block; }
+        .chart-container { background: #1e2329; padding: 15px; border-radius: 8px; margin-top: 25px; height: 450px; }
+        .advice-section { background: #2b3139; padding: 20px; border-radius: 8px; margin-top: 25px; border-left: 10px solid #f0b90b; line-height: 1.6; }
     </style>
 </head>
 <body>
-
 <div class="card">
-    <div style="text-align:center; margin-bottom:20px;">
-        <h2 style="margin:0;">🛡️ LEU 勝率診斷儀</h2>
-        <p style="color:#94a3b8; font-size:14px;">專業 API 驅動 · 拒絕封鎖</p>
+    <h2>🛡️ 獵人 8.0：終極完全體系統</h2>
+    
+    <div class="grid-3">
+        <div class="input-group"><label>1. 選擇獵物</label><select id="s" onchange="ld()"><option value="custom">-- 自定義 --</option><option value="NVDA">NVDA (AI 龍頭)</option><option value="META">META (廣告變現)</option><option value="LEU">LEU (核能轉機)</option><option value="MU">MU (記憶體週期)</option></select></div>
+        <div class="input-group"><label>目前現價 (P)</label><input type="number" id="p" value="400"></div>
+        <div class="input-group"><label>大盤 VIX</label><input type="number" id="vix" value="21.5"></div>
     </div>
 
-    <div class="input-group">
-        <input type="text" id="sym" value="LEU" placeholder="代碼">
-        <input type="number" id="kP" value="130" placeholder="設定買回價">
-        <button id="btn" onclick="runFinalDiagnostic()">啟動終極診斷</button>
+    <div class="data-panel">
+        <div class="input-group"><label>預估 EPS (E)</label><input type="number" id="e" value="18.5" step="0.1"></div>
+        <div class="input-group"><label>實時 IV (%)</label><input type="number" id="iv" value="52"></div>
+        <div class="input-group"><label>歷史支撐 PE</label><input type="number" id="pe" value="12"></div>
+        <div class="input-group"><label>報仇價/籌碼牆</label><input type="number" id="t" value="345"></div>
     </div>
 
-    <div id="loader" class="loading">⚙️ 正在穿透數據庫...</div>
+    <button class="btn-run" onclick="run8()">啟動終極執行診斷</button>
 
-    <div id="scoreBox" class="score-box">
-        <span style="font-size:16px; font-weight:600; opacity:0.9;">勝率安全評分</span>
-        <b id="scoreVal" class="score-val">--</b>
+    <div class="monitor-grid">
+        <div class="monitor-box"><span id="resWin" class="val">--</span>半年生存率</div>
+        <div class="monitor-box"><span id="resPE" class="val">--</span>目前 PE</div>
+        <div class="monitor-box"><span id="resAdj" class="val">--</span>校準後 PE</div>
+        <div class="monitor-box"><span id="resSafe" class="val">--</span>震盪保護位</div>
     </div>
 
-    <div id="report" class="report"></div>
-    <div id="chart"></div>
+    <div class="chart-container"><canvas id="mcChart"></canvas></div>
+    <div id="advice" class="advice-section" style="display:none;"></div>
 </div>
 
 <script>
-async function runFinalDiagnostic() {
-    const API_KEY = "8X9qpWswilknQ_ujlBQnOxpYOqiSvaJp"; 
-    const sym = document.getElementById('sym').value.toUpperCase().trim();
-    const kP = parseFloat(document.getElementById('kP').value);
-    const btn = document.getElementById('btn');
-    const loader = document.getElementById('loader');
+let chart;
+const db = {
+    "NVDA": [177, 46, 5.15, 30, 142], "META": [645, 32, 30.2, 21, 605],
+    "LEU": [202, 88, 7.5, 17, 132], "MU": [400, 52, 18.5, 12, 345]
+};
 
-    btn.disabled = true;
-    loader.style.display = 'block';
+function ld() {
+    const s = document.getElementById('s').value; if(s === "custom") return;
+    const d = db[s]; document.getElementById('p').value=d[0]; document.getElementById('iv').value=d[1];
+    document.getElementById('e').value=d[2]; document.getElementById('pe').value=d[3]; document.getElementById('t').value=d[4];
+}
 
-    try {
-        const res = await fetch(`https://api.polygon.io/v2/aggs/ticker/${sym}/range/1/day/2025-01-01/2026-12-31?adjusted=true&sort=asc&apiKey=${API_KEY}`);
-        const data = await res.json();
-        const results = data.results;
-        
-        const close = results.map(r => r.c);
-        const curP = close[close.length - 1];
-        const ma200 = close.slice(-200).reduce((a, b) => a + b) / 200;
-        const bias = ((curP - ma200) / ma200 * 100).toFixed(2);
-        const hi = Math.max(...results.map(r => r.h));
-        const lo = Math.min(...results.map(r => r.l));
-        const fib618 = hi - 0.618 * (hi - lo);
-        const stopL = (Math.max(...close.slice(-20)) * 0.85).toFixed(2);
-
-        // 完整評分邏輯
-        let s = 80;
-        if(parseFloat(bias) > 30) s -= 30;
-        if(parseFloat(bias) < -15) s -= 10;
-        if(curP < parseFloat(stopL)) s -= 10;
-        if(kP <= fib618) s += 15; 
-
-        document.getElementById('scoreVal').innerText = (s > 100 ? 100 : s) + " / 100";
-        document.getElementById('scoreBox').style.display = 'block';
-        
-        let reportHtml = `<b>📊 ${sym} 深度診斷報告：</b><br>`;
-        reportHtml += `• 目前現價：$${curP.toFixed(2)}<br>`;
-        reportHtml += `• 年線乖離率：${bias}%<br>`;
-        reportHtml += `• 0.618 支撐位：<b>$${fib618.toFixed(2)}</b><br>`;
-        reportHtml += `• <b>動態停利線：$${stopL}</b><br>`;
-        reportHtml += `<hr><b>🎯 $${kP} 計畫測試：</b><br>`;
-        reportHtml += `位階：${kP <= fib618 ? '<span style="color:#4ade80">🔥 符合優質超跌區</span>' : '<span style="color:#fbbf24">⏳ 仍屬追高</span>'}<br>`;
-        reportHtml += `狀態：${curP < parseFloat(stopL) ? '⚠️ 趨勢已跌破停利線' : '✅ 趨勢尚穩'}。`;
-        
-        document.getElementById('report').innerHTML = reportHtml;
-        document.getElementById('report').style.display = 'block';
-
-        let paths = [];
-        for(let i=0; i<35; i++){
-            let p = [curP];
-            for(let d=0; d<180; d++){ p.push(p[p.length-1] * (1 + (Math.random()-0.495)*0.042)); }
-            paths.push(p);
+function run8() {
+    const p0 = parseFloat(document.getElementById('p').value), eps = parseFloat(document.getElementById('e').value);
+    const iv0 = parseFloat(document.getElementById('iv').value)/100, basePE = parseFloat(document.getElementById('pe').value);
+    const target = parseFloat(document.getElementById('t').value), vix = parseFloat(document.getElementById('vix').value);
+    
+    // 1. 蒙地卡羅 + IV 衰減回歸
+    let win = 0, trials = 3000, paths = [];
+    for (let i = 0; i < trials; i++) {
+        let p = p0, civ = iv0, path = [p0];
+        for (let d = 0; d < 180; d++) {
+            civ = civ + (0.4 - civ) * 0.005; // IV 向 40% 均值回歸
+            p *= Math.exp((0.04 - 0.5 * civ * civ) * (1/252) + civ * Math.sqrt(1/252) * (Math.random()*2-1)*1.732);
+            if (i < 30) path.push(p);
         }
-        Plotly.newPlot('chart', paths.map(p=>({y:p, line:{width:0.8, color:'rgba(59,130,246,0.15)'}, showlegend:false})), {
-            paper_bgcolor:'#1e293b', plot_bgcolor:'#1e293b', font:{color:'#fff'},
-            title: `${sym} 180天機率期望路徑`
-        });
-
-    } catch (e) {
-        alert("診斷失敗！請檢查網路。");
-    } finally {
-        loader.style.display = 'none';
-        btn.disabled = false;
+        if (p > p0) win++; if (i < 30) paths.push(path);
     }
+    const winRate = (win/trials*100).toFixed(1);
+    
+    // 2. 數據核對
+    const curPE = (p0/eps).toFixed(1), vixAdj = vix > 20 ? (vix-20)*0.5 : 0, adjPE = (basePE-vixAdj).toFixed(1);
+    const sigmaWall = (p0 * (1 - iv0 * 0.25)).toFixed(1);
+
+    document.getElementById('resWin').innerText = winRate + "%";
+    document.getElementById('resPE').innerText = curPE + "x";
+    document.getElementById('resAdj').innerText = adjPE + "x";
+    document.getElementById('resSafe').innerText = "$" + sigmaWall;
+
+    updateChart(paths, target);
+    showAdvice(winRate, p0, target, sigmaWall);
+}
+
+function updateChart(paths, target) {
+    const ctx = document.getElementById('mcChart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 181}, (_, i) => i),
+            datasets: paths.map((p, i) => ({ data: p, borderColor: p[180] > paths[0][0] ? 'rgba(14,203,129,0.2)' : 'rgba(246,70,93,0.2)', borderWidth: 1, pointRadius: 0, fill: false }))
+            .concat([{ label: '目標價/籌碼牆', data: Array(181).fill(target), borderColor: '#f0b90b', borderDash: [5,5], borderWidth: 2, pointRadius: 0 }])
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#2b2f36' } }, x: { grid: { display: false } } } }
+    });
+}
+
+function showAdvice(wr, p0, target, sw) {
+    const adv = document.getElementById('advice'); adv.style.display = 'block';
+    let size = wr < 45 ? "10% (防踏空用)" : (wr < 65 ? "30% (分批佈局)" : "60% (核心重倉)");
+    adv.innerHTML = `<h3>📢 獵人執行指令</h3>
+        <li><b>生存檢測</b>：半年勝率僅 <b class="highlight">${wr}%</b>。數據顯示現價買入並無統計優勢。</li>
+        <li><b>震盪防線</b>：短期回撤至 <b class="highlight">$${sw}</b> 均屬正常波動，若未跌破此位不應恐慌。</li>
+        <hr>
+        <div style="font-size:1.2em;"><b>執行建議</b>：建議目前投入 <b class="highlight">${size}</b> 資金。主力子彈死守 <b class="highlight">$${target}</b>。</div>`;
 }
 </script>
 </body>
