@@ -2,20 +2,19 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 獵人 34.0 - 黃金分割實戰版</title>
+    <title>AI 獵人 35.0 - 黃金分割機率實戰版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #0b0e11; color: #d1d4dc; padding: 20px; }
         .card { background: #161a1e; border-radius: 12px; border: 1px solid #2b2f36; padding: 25px; max-width: 1000px; margin: auto; }
         .input-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
-        .input-group label { font-size: 0.8em; color: #848e9c; }
-        .input-box { background: #0b1116; border: 1px solid #474d57; color: #fff; padding: 10px; border-radius: 6px; }
+        .input-box { background: #0b1116; border: 1px solid #474d57; color: #fff; padding: 10px; border-radius: 6px; width: 90%; }
         .btn-run { background: #f0b90b; color: #000; font-weight: bold; border: none; padding: 12px; border-radius: 6px; cursor: pointer; grid-column: span 5; margin-top: 10px; }
         .chart-container { background: #1e2329; padding: 15px; border-radius: 8px; height: 500px; margin-top: 20px; }
         .fibo-table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 0.9em; }
-        .fibo-table th, .fibo-table td { border: 1px solid #2b2f36; padding: 8px; text-align: center; }
-        .fibo-table th { background: #2b3139; }
+        .fibo-table th, .fibo-table td { border: 1px solid #2b2f36; padding: 10px; text-align: center; }
+        .fibo-table th { background: #2b3139; color: #848e9c; }
+        .prob-val { font-weight: bold; color: #f0b90b; font-size: 1.1em; }
     </style>
 </head>
 <body>
@@ -25,14 +24,20 @@
         <div class="input-group"><label>區間高點</label><input type="number" id="high" class="input-box" placeholder="如: 260"></div>
         <div class="input-group"><label>區間低點</label><input type="number" id="low" class="input-box" placeholder="如: 140"></div>
         <div class="input-group"><label>預期 6M IV (%)</label><input type="number" id="iv" class="input-box" placeholder="如: 55"></div>
-        <div class="input-group"><label>模擬次數</label><input type="number" id="trials" class="input-box" value="3000"></div>
-        <button class="btn-run" onclick="run340()">執行黃金切割路徑分析</button>
+        <button class="btn-run" onclick="run350()">執行黃金分割機率分析</button>
     </div>
 
     <div id="resLayout" style="display:none;">
         <div class="chart-container"><canvas id="mcChart"></canvas></div>
-        <table class="fibo-table" id="fiboTable">
-            <thead><tr><th>比例</th><th>價格</th><th>意義</th></tr></thead>
+        <table class="fibo-table">
+            <thead>
+                <tr>
+                    <th>分割比例</th>
+                    <th>價格位階</th>
+                    <th>落在該線以上的機率 (勝率)</th>
+                    <th>區間路徑佔比</th>
+                </tr>
+            </thead>
             <tbody id="fiboBody"></tbody>
         </table>
     </div>
@@ -40,75 +45,73 @@
 
 <script>
 let chart;
-function run340() {
+function run350() {
     const p0 = parseFloat(document.getElementById('p0').value);
     const high = parseFloat(document.getElementById('high').value);
     const low = parseFloat(document.getElementById('low').value);
     const ivRaw = parseFloat(document.getElementById('iv').value);
-    const trials = parseInt(document.getElementById('trials').value);
-
     if (!p0 || !high || !low || !ivRaw) return;
 
-    // 1. 計算黃金切割位
     const diff = high - low;
-    const fibos = {
-        "1.000": high,
-        "0.764": low + diff * 0.764,
-        "0.618": low + diff * 0.618,
-        "0.500": low + diff * 0.5,
-        "0.382": low + diff * 0.382,
-        "0.236": low + diff * 0.236,
-        "0.000": low
-    };
+    const fiboLevels = [1.0, 0.764, 0.618, 0.5, 0.382, 0.236, 0.0];
+    const fibos = {};
+    fiboLevels.forEach(lv => fibos[lv] = low + diff * lv);
 
-    // 2. 顯示表格
-    const body = document.getElementById('fiboBody');
-    body.innerHTML = "";
-    Object.keys(fibos).reverse().forEach(key => {
-        const row = `<tr><td>${key}</td><td>$${fibos[key].toFixed(2)}</td><td>${getMeaning(key)}</td></tr>`;
-        body.innerHTML += row;
-    });
-
-    // 3. 蒙地卡羅模擬
     const iv = ivRaw / 100;
+    const trials = 3000;
+    let finalPrices = [];
     let paths = [];
+
     for (let i = 0; i < trials; i++) {
         let p = p0; let path = [p0];
         for (let d = 0; d < 180; d++) {
             p *= Math.exp((0.04 - 0.5 * iv * iv) * (1/252) + iv * Math.sqrt(1/252) * (Math.random()*2-1)*1.732);
-            if (i < 40) path.push(p);
+            if (i < 35) path.push(p);
         }
-        if (i < 40) paths.push(path);
+        finalPrices.push(p);
+        if (i < 35) paths.push(path);
     }
 
     document.getElementById('resLayout').style.display = 'block';
-    updateChart(paths, fibos);
-}
+    const body = document.getElementById('fiboBody');
+    body.innerHTML = "";
 
-function getMeaning(k) {
-    if (k === "0.500") return "多空分水嶺";
-    if (k === "0.618" || k === "0.382") return "強勢支撐/壓力";
-    return "-";
+    fiboLevels.forEach((lv, index) => {
+        const price = fibos[lv];
+        const winCount = finalPrices.filter(p => p >= price).length;
+        const winRate = (winCount / trials * 100).toFixed(1);
+        
+        // 計算落在兩個分割位之間的比例
+        let rangeProb = "--";
+        if(index < fiboLevels.length - 1) {
+            const nextPrice = fibos[fiboLevels[index+1]];
+            const inRange = finalPrices.filter(p => p < price && p >= nextPrice).length;
+            rangeProb = (inRange / trials * 100).toFixed(1) + "%";
+        }
+
+        body.innerHTML += `
+            <tr>
+                <td>${lv.toFixed(3)}</td>
+                <td>$${price.toFixed(2)}</td>
+                <td class="prob-val">${winRate}%</td>
+                <td>${index === 0 ? "上方空間" : rangeProb}</td>
+            </tr>`;
+    });
+
+    updateChart(paths, fibos);
 }
 
 function updateChart(paths, fibos) {
     const ctx = document.getElementById('mcChart').getContext('2d');
     if (chart) chart.destroy();
+    const datasets = paths.map(p => ({ data: p, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, pointRadius: 0, fill: false }));
     
-    const datasets = paths.map(p => ({
-        data: p, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, pointRadius: 0, fill: false
-    }));
-
-    // 加入黃金切割線
-    const colors = { "0.618": "#f0b90b", "0.500": "#fff", "0.382": "#e74c3c" };
-    Object.keys(fibos).forEach(key => {
+    const colors = { "0.618": "#f0b90b", "0.5": "#fff", "0.382": "#e74c3c" };
+    Object.keys(fibos).forEach(lv => {
         datasets.push({
-            label: `Fibo ${key}`,
-            data: Array(181).fill(fibos[key]),
-            borderColor: colors[key] || "rgba(132,142,156,0.5)",
-            borderDash: [5, 5],
-            borderWidth: (key === "0.618" || key === "0.500") ? 2 : 1,
-            pointRadius: 0
+            label: lv, data: Array(181).fill(fibos[lv]),
+            borderColor: colors[lv] || "rgba(132,142,156,0.4)",
+            borderDash: [5, 5], borderWidth: (colors[lv] ? 2 : 1), pointRadius: 0
         });
     });
 
